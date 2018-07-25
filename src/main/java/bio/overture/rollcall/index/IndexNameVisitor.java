@@ -1,6 +1,6 @@
-package bio.overture.rollcall.Index;
+package bio.overture.rollcall.index;
 
-import bio.overture.rollcall.Index.ResolvedIndex.Part;
+import bio.overture.rollcall.index.ResolvedIndex.Part;
 import bio.overture.rollcall.antlr4.IndexNameBaseVisitor;
 import bio.overture.rollcall.antlr4.IndexNameParser.*;
 import bio.overture.rollcall.antlr4.IndexNameParser.IndexNameContext;

@@ -1,4 +1,4 @@
-package bio.overture.rollcall.Index;
+package bio.overture.rollcall.index;
 
 import bio.overture.rollcall.antlr4.IndexNameLexer;
 import bio.overture.rollcall.antlr4.IndexNameParser;

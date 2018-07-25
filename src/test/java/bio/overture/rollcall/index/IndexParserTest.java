@@ -1,8 +1,6 @@
-package bio.overture.rollcall.Index;
+package bio.overture.rollcall.index;
 
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class IndexParserTest {
 

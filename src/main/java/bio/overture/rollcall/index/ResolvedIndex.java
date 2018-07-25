@@ -1,7 +1,6 @@
-package bio.overture.rollcall.Index;
+package bio.overture.rollcall.index;
 
 import lombok.Builder;
-import lombok.Data;
 import lombok.Value;
 
 @Value

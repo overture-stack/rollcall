@@ -1,6 +1,6 @@
 package bio.overture.rollcall.controller;
 
-import bio.overture.rollcall.Index.ResolvedIndex;
+import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.service.IndexService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -1,7 +1,7 @@
 package bio.overture.rollcall.service;
 
-import bio.overture.rollcall.Index.IndexParser;
-import bio.overture.rollcall.Index.ResolvedIndex;
+import bio.overture.rollcall.index.IndexParser;
+import bio.overture.rollcall.index.ResolvedIndex;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
