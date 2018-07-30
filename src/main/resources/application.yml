@@ -1,3 +1,16 @@
 elasticsearch:
   host: 127.0.0.1
   port: 9300
+
+rollcall:
+  aliases:
+    -
+      alias: file_centric
+      entity: file
+      type: centric
+    -
+      alias: participant_centric
+      entity: participant
+      type: centric
+
+debug: true
