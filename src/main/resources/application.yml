@@ -13,4 +13,4 @@ rollcall:
       entity: participant
       type: centric
 
-debug: true
+debug: false
