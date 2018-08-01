@@ -19,4 +19,12 @@ public class ResolvedIndex {
   private final String shard;
   private final String release;
 
+  public boolean isValid() {
+    return !(entity == null
+      || type == null
+      || shardPrefix == null
+      || shard == null
+      || release == null);
+  }
+
 }

@@ -42,7 +42,9 @@ public class IndexService {
       .getIndex(new GetIndexRequest()).get()
       .getIndices();
 
-    return Arrays.stream(indicies).map(IndexParser::parse).collect(toList());
+    return Arrays.stream(indicies).map(IndexParser::parse)
+      .filter(ResolvedIndex::isValid)
+      .collect(toList());
   }
 
   @SneakyThrows
