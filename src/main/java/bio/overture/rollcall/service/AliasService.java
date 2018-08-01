@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 @Service
 public class AliasService {
@@ -74,11 +73,14 @@ public class AliasService {
       throw new IllegalStateException("No such alias with index candidates");
     }
 
+    // TODO: UNIT TEST
+    val existing = getIndicesWithAlias(alias);
     val indices = candidates.get().getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
       .filter(i -> i.getReleasePrefix().equals(release[0]))
       .filter(i -> i.getRelease().equals(release[1]))
+      .filter(i -> existing.contains(i.getIndexName()))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
@@ -87,21 +89,7 @@ public class AliasService {
 
   private boolean removeAliasFromAllIndices(String alias) {
     val state = indexService.getState();
-
-    List<String> existing = new ArrayList<>();
-    state.forEach( entry -> {
-      val indexName = entry.key;
-      val aliases = entry.value;
-
-      val foundOpt = aliases.stream()
-        .filter(a -> a.alias().equals(alias))
-        .findFirst();
-
-      if (foundOpt.isPresent()) {
-        existing.add(indexName);
-      }
-    });
-
+    List<String> existing = getIndicesWithAlias(alias);
     return indexService.removeAlias(alias, existing);
   }
 
@@ -124,6 +112,25 @@ public class AliasService {
       .map(s -> s.split("_"))
       .map(s -> new Shard(s[0], s[1]))
       .collect(toList());
+  }
+
+  private List<String> getIndicesWithAlias(String alias) {
+    val state = indexService.getState();
+
+    List<String> existing = new ArrayList<>();
+    state.forEach( entry -> {
+      val indexName = entry.key;
+      val aliases = entry.value;
+
+      val foundOpt = aliases.stream()
+        .filter(a -> a.alias().equals(alias))
+        .findFirst();
+
+      if (foundOpt.isPresent()) {
+        existing.add(indexName);
+      }
+    });
+    return existing;
   }
 
   @Data
