@@ -17,11 +17,16 @@ import java.net.InetAddress;
 @Configuration
 public class ElasticsearchConfig {
 
+  private static final String CLUSTER_NAME = "cluster.name";
+
   @Value("${elasticsearch.host}")
   private String host;
 
   @Value("${elasticsearch.port}")
   private int port;
+
+  @Value("${elasticsearch.cluster-name}")
+  private String clusterName;
 
   @Bean
   @SneakyThrows
@@ -36,7 +41,9 @@ public class ElasticsearchConfig {
   @Bean
   @SneakyThrows
   public TransportClient transportClient() {
-    return new PreBuiltTransportClient(Settings.EMPTY)
+    return new PreBuiltTransportClient(Settings.builder()
+        .put(CLUSTER_NAME, clusterName)
+        .build())
       .addTransportAddress(new TransportAddress(InetAddress.getByName(host), port));
   }
 
