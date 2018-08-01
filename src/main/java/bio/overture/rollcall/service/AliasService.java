@@ -97,6 +97,7 @@ public class AliasService {
     val indices = candidates.getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard()))) // Only update the shards we are interested in
+      .filter(i -> i.getReleasePrefix().equals(release[0]) && i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
