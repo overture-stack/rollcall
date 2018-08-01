@@ -63,7 +63,6 @@ public class AliasService {
 
   public boolean remove(AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
-    val release = aliasRequest.getRelease().toLowerCase().split("_");
     val shards = getShardsFromRequest(aliasRequest);
 
     val candidates = this.getCandidates().stream()
@@ -78,8 +77,6 @@ public class AliasService {
     val indices = candidates.get().getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
-      .filter(i -> i.getReleasePrefix().equals(release[0]))
-      .filter(i -> i.getRelease().equals(release[1]))
       .filter(i -> existing.contains(i.getIndexName()))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
