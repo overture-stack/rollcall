@@ -8,7 +8,7 @@ import lombok.Value;
 public class ResolvedIndex {
 
   public enum Part {
-    INDEX, ENTITY, TYPE, SHARD_PREFIX, SHARD, RELEASE
+    INDEX, ENTITY, TYPE, SHARD_PREFIX, SHARD, RELEASE_PREFIX, RELEASE
   }
 
   private final String indexName;
@@ -17,6 +17,7 @@ public class ResolvedIndex {
   private final String type;
   private final String shardPrefix;
   private final String shard;
+  private final String releasePrefix;
   private final String release;
 
   public boolean isValid() {
@@ -24,6 +25,7 @@ public class ResolvedIndex {
       || type == null
       || shardPrefix == null
       || shard == null
+      || releasePrefix == null
       || release == null);
   }
 

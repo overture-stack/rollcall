@@ -4,6 +4,7 @@ import bio.overture.rollcall.config.RollcallConfig;
 import bio.overture.rollcall.config.RollcallConfig.ConfiguredAlias;
 import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.model.AliasRequest;
+import bio.overture.rollcall.model.Shard;
 import lombok.Data;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 @Service
 public class AliasService {
@@ -46,12 +48,13 @@ public class AliasService {
   public boolean release(AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
 
-    val removed = removeAliasFromAllIndices(alias);
+    val removed = remove(aliasRequest);
     if (!removed) {
       throw new IllegalStateException("Failed to remove alias");
     }
 
-    val candidates = this.getCandidates().stream().filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
+    val candidates = this.getCandidates().stream()
+      .filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
     if (!candidates.isPresent()) {
       throw new IllegalStateException("No such alias with index candidates");
     }
@@ -61,17 +64,21 @@ public class AliasService {
 
   public boolean remove(AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
-    val shards = aliasRequest.getShardIds();
-    val releaseId = aliasRequest.getReleaseId();
+    val release = aliasRequest.getRelease().toLowerCase().split("_");
+    val shards = getShardsFromRequest(aliasRequest);
 
-    val candidates = this.getCandidates().stream().filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
+    val candidates = this.getCandidates().stream()
+      .filter(c -> c.getAlias().getAlias().equals(alias))
+      .findFirst();
     if (!candidates.isPresent()) {
       throw new IllegalStateException("No such alias with index candidates");
     }
 
     val indices = candidates.get().getIndices().stream()
-      .filter(i -> shards.contains(i.getShard()))
-      .filter(i -> i.getRelease().equals(releaseId))
+      .filter(i -> shards.stream().
+        anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
+      .filter(i -> i.getReleasePrefix().equals(release[0]))
+      .filter(i -> i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
@@ -99,12 +106,24 @@ public class AliasService {
   }
 
   private boolean addAliasToIndices(AliasRequest aliasRequest, AliasCandidates candidates) {
+    val release = aliasRequest.getRelease().toLowerCase().split("_");
+    val shards = getShardsFromRequest(aliasRequest);
+
     val indices = candidates.getIndices().stream()
-      .filter(i -> aliasRequest.getShardIds().contains(i.getShard())) // Only update the shards we are interested in
+      .filter(i -> shards.stream().
+        anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard()))) // Only update the shards we are interested in
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
     return indexService.addAlias(aliasRequest.getAlias(), indices);
+  }
+
+  private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {
+    return aliasRequest.getShards().stream()
+      .map(String::toLowerCase)
+      .map(s -> s.split("_"))
+      .map(s -> new Shard(s[0], s[1]))
+      .collect(toList());
   }
 
   @Data

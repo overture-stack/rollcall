@@ -28,9 +28,9 @@ public class IndexServiceTest {
       .waitingFor(Wait.forHttp("/")) // Wait until elastic start
       .withEnv("discovery.type", "single-node");
 
-  private static String INDEX1 = "file_centric_sd_ygva0e1c_foobar";
-  private static String INDEX2 = "file_centric_sd_preasa7s_foobar";
-  private static String INDEX3 = "file_centric_sd_46sk55a3_foobar";
+  private static String INDEX1 = "file_centric_sd_ygva0e1c_re_foobar";
+  private static String INDEX2 = "file_centric_sd_preasa7s_re_foobar";
+  private static String INDEX3 = "file_centric_sd_46sk55a3_re_foobar";
 
   private TransportClient client;
   private IndexService service;

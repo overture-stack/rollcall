@@ -5,7 +5,7 @@ grammar IndexName;
  */
 
 indexName
-    : entity SEP part SEP shardPrefix SEP shard SEP release
+    : entity SEP part SEP shardPrefix SEP shard SEP releasePrefix SEP release
     ;
 
 entity
@@ -23,6 +23,10 @@ shardPrefix
     ;
 
 shard
+    : ALPHANUM
+    ;
+
+releasePrefix
     : ALPHANUM
     ;
 

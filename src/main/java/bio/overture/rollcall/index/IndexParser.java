@@ -47,6 +47,9 @@ public class IndexParser {
       case SHARD:
         builder.shard(part.getValue());
         break;
+      case RELEASE_PREFIX:
+        builder.releasePrefix(part.getValue());
+        break;
       case RELEASE:
         builder.release(part.getValue());
         break;

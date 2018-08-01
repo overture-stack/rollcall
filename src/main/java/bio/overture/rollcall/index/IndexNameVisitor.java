@@ -39,6 +39,10 @@ public class IndexNameVisitor extends IndexNameBaseVisitor<IndexNamePart> {
     return new IndexNamePart(Part.SHARD, ctx.getChild(0).getText());
   }
 
+  @Override public IndexNamePart visitReleasePrefix(ReleasePrefixContext ctx) {
+    return new IndexNamePart(Part.RELEASE_PREFIX, ctx.getChild(0).getText());
+  }
+
   @Override public IndexNamePart visitRelease(ReleaseContext ctx) {
     return new IndexNamePart(Part.RELEASE, ctx.getChild(0).getText());
   }

@@ -8,7 +8,7 @@ import java.util.List;
 public class AliasRequest {
 
   private final String alias;
-  private final String releaseId;
-  private final List<String> shardIds;
+  private final String release;
+  private final List<String> shards;
 
 }
