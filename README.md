@@ -8,6 +8,8 @@
   <a href="" target="_blank"><img alt="Under Development" title="Under Development" src="http://www.overture.bio/img/progress-horizontal-UD.svg" width="320" /></a>
 </p>
 
+[![CircleCI](https://circleci.com/gh/overture-stack/rollcall.svg?style=svg)](https://circleci.com/gh/overture-stack/rollcall)
+
 ## Introduction
 
 The purpose of Rollcall is to assist those projects which make use of Elasticsearch as a primary data store to drive rich facet search and powerful search APIs.
