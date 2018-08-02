@@ -3,6 +3,7 @@
 # Check https://circleci.com/docs/2.0/language-java/ for more details
 #
 version: 2
+executorType: machine
 jobs:
   build:
     docker:
@@ -37,6 +38,10 @@ jobs:
         - ~/.m2
         key: v1-dependencies-{{ checksum "pom.xml" }}
 
-    # run tests!
-    - run: mvn integration-test
+    # Run Tests
+    - run:
+        name: Maven Test
+        command: |
+          mvn test \
+          -D spring.profiles.active=test
 
