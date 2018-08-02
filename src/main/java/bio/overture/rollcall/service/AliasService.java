@@ -111,8 +111,7 @@ public class AliasService {
     return repository.removeAlias(alias, indices);
   }
 
-  private boolean removeAliasFromAllIndices(String alias) {
-    val state = repository.getAliasState();
+  public boolean removeAliasFromAllIndices(String alias) {
     List<String> existing = getIndicesWithAlias(alias);
     return repository.removeAlias(alias, existing);
   }

@@ -31,6 +31,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions.*;
+
 @Repository
 public class IndexRepository {
 
@@ -50,19 +52,15 @@ public class IndexRepository {
 
   @SneakyThrows
   public ImmutableOpenMap<String, List<AliasMetaData>> getAliasState() {
-    val aliases =  client.admin().indices()
+    return client.admin().indices()
       .getAliases(new GetAliasesRequest()).get()
       .getAliases();
-
-    return aliases;
   }
 
   @SneakyThrows
   public boolean removeAlias(String alias, List<String> indices) {
     val req = new IndicesAliasesRequest();
-    indices.forEach(i -> {
-      req.addAliasAction(IndicesAliasesRequest.AliasActions.remove().alias(alias).index(i));
-    });
+    indices.forEach(i -> req.addAliasAction(remove().alias(alias).index(i)));
 
     if (req.getAliasActions().isEmpty()) {
       return true;
@@ -73,9 +71,7 @@ public class IndexRepository {
   @SneakyThrows
   public boolean addAlias(String alias, List<String> indices) {
     val req = new IndicesAliasesRequest();
-    indices.forEach(i -> {
-      req.addAliasAction(IndicesAliasesRequest.AliasActions.add().alias(alias).index(i));
-    });
+    indices.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
     return client.admin().indices().aliases(req).get().isAcknowledged();
   }
 
