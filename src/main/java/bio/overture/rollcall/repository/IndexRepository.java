@@ -16,10 +16,8 @@
  *
  */
 
-package bio.overture.rollcall.service;
+package bio.overture.rollcall.repository;
 
-import bio.overture.rollcall.index.IndexParser;
-import bio.overture.rollcall.index.ResolvedIndex;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -29,20 +27,17 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 
-import java.util.Arrays;
 import java.util.List;
 
-import static java.util.stream.Collectors.toList;
-
-@Service
-public class IndexService {
+@Repository
+public class IndexRepository {
 
   private final TransportClient client;
 
   @Autowired
-  public IndexService(TransportClient client) {
+  public IndexRepository(TransportClient client) {
     this.client = client;
   }
 
@@ -54,18 +49,7 @@ public class IndexService {
   }
 
   @SneakyThrows
-  public List<ResolvedIndex> getResolved() {
-    val indicies = client.admin().indices()
-      .getIndex(new GetIndexRequest()).get()
-      .getIndices();
-
-    return Arrays.stream(indicies).map(IndexParser::parse)
-      .filter(ResolvedIndex::isValid)
-      .collect(toList());
-  }
-
-  @SneakyThrows
-  public ImmutableOpenMap<String, List<AliasMetaData>> getState() {
+  public ImmutableOpenMap<String, List<AliasMetaData>> getAliasState() {
     val aliases =  client.admin().indices()
       .getAliases(new GetAliasesRequest()).get()
       .getAliases();

@@ -20,15 +20,18 @@ package bio.overture.rollcall.service;
 
 import bio.overture.rollcall.config.RollcallConfig;
 import bio.overture.rollcall.config.RollcallConfig.ConfiguredAlias;
+import bio.overture.rollcall.index.IndexParser;
 import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.Shard;
+import bio.overture.rollcall.repository.IndexRepository;
 import lombok.Data;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -37,20 +40,26 @@ import static java.util.stream.Collectors.toList;
 public class AliasService {
 
   private final RollcallConfig aliasConfig;
-  private final IndexService indexService;
+  private final IndexRepository repository;
 
   @Autowired
-  public AliasService(RollcallConfig aliasConfig, IndexService indexService) {
+  public AliasService(RollcallConfig aliasConfig, IndexRepository repository) {
     this.aliasConfig = aliasConfig;
-    this.indexService = indexService;
+    this.repository = repository;
   }
 
   public List<ConfiguredAlias> getConfigured() {
     return aliasConfig.getAliases();
   }
 
+  public List<ResolvedIndex> getResolved() {
+    return Arrays.stream(repository.getIndices()).map(IndexParser::parse)
+      .filter(ResolvedIndex::isValid)
+      .collect(toList());
+  }
+
   public List<AliasCandidates> getCandidates() {
-    val resolved = indexService.getResolved();
+    val resolved = this.getResolved();
     val configAliases = aliasConfig.getAliases();
 
     return configAliases.stream()
@@ -99,13 +108,13 @@ public class AliasService {
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
-    return indexService.removeAlias(alias, indices);
+    return repository.removeAlias(alias, indices);
   }
 
   private boolean removeAliasFromAllIndices(String alias) {
-    val state = indexService.getState();
+    val state = repository.getAliasState();
     List<String> existing = getIndicesWithAlias(alias);
-    return indexService.removeAlias(alias, existing);
+    return repository.removeAlias(alias, existing);
   }
 
   private boolean addAliasToIndices(AliasRequest aliasRequest, AliasCandidates candidates) {
@@ -119,7 +128,7 @@ public class AliasService {
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
-    return indexService.addAlias(aliasRequest.getAlias(), indices);
+    return repository.addAlias(aliasRequest.getAlias(), indices);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {
@@ -131,7 +140,7 @@ public class AliasService {
   }
 
   private List<String> getIndicesWithAlias(String alias) {
-    val state = indexService.getState();
+    val state = repository.getAliasState();
 
     List<String> existing = new ArrayList<>();
     state.forEach( entry -> {

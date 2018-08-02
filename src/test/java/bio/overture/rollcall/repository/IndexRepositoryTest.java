@@ -16,7 +16,7 @@
  *
  */
 
-package bio.overture.rollcall.service;
+package bio.overture.rollcall.repository;
 
 import lombok.SneakyThrows;
 import lombok.val;
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class IndexServiceTest {
+public class IndexRepositoryTest {
 
   @ClassRule
   public static GenericContainer esContainer =
@@ -51,14 +51,14 @@ public class IndexServiceTest {
   private static String INDEX3 = "file_centric_sd_46sk55a3_re_foobar";
 
   private TransportClient client;
-  private IndexService service;
+  private IndexRepository repository;
 
   @Before
   @SneakyThrows
   public void setUp() {
     client = new PreBuiltTransportClient(Settings.builder().put("cluster.name", "docker-cluster").build())
       .addTransportAddress(new TransportAddress(InetAddress.getByName(esContainer.getIpAddress()), 10300));
-    service = new IndexService(client);
+    repository = new IndexRepository(client);
 
     client.admin().indices().prepareCreate(INDEX1).get();
     client.admin().indices().prepareCreate(INDEX2).get();
@@ -78,19 +78,9 @@ public class IndexServiceTest {
     }
 
   @Test
-  public void getResolvedTest() {
-    val resolved = service.getResolved();
-
-    assertThat(resolved).hasSize(3);
-    resolved.forEach(i -> assertThat(i.getEntity()).isEqualTo("file"));
-    resolved.forEach(i -> assertThat(i.getType()).isEqualTo("centric"));
-    resolved.forEach(i -> assertThat(i.getRelease()).isEqualTo("foobar") );
-  }
-
-  @Test
   @SneakyThrows
   public void getStateTestNoAlias() {
-    service.getState().valuesIt().forEachRemaining(i -> assertThat(i).isEmpty());
+    repository.getAliasState().valuesIt().forEachRemaining(i -> assertThat(i).isEmpty());
   }
 
   @Test
@@ -98,20 +88,20 @@ public class IndexServiceTest {
   public void releaseAndRemoveTest() {
     val list = Lists.list(INDEX1,INDEX2,INDEX3);
 
-    val added = service.addAlias("file_centric", list);
+    val added = repository.addAlias("file_centric", list);
 
     assertThat(added).isTrue();
 
-    val state = service.getState();
+    val state = repository.getAliasState();
     list.forEach(index -> {
       val indexState = state.get(index);
       assertThat(indexState).isNotEmpty();
       assertThat(indexState.get(0).alias()).isEqualTo("file_centric");
     });
 
-    val removed = service.removeAlias("file_centric", Lists.list(INDEX1,INDEX2,INDEX3));
+    val removed = repository.removeAlias("file_centric", Lists.list(INDEX1,INDEX2,INDEX3));
     assertThat(removed).isTrue();
-    service.getState().valuesIt().forEachRemaining(i -> assertThat(i).isEmpty());
+    repository.getAliasState().valuesIt().forEachRemaining(i -> assertThat(i).isEmpty());
   }
 
 }

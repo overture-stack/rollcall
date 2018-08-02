@@ -20,6 +20,7 @@ package bio.overture.rollcall.service;
 
 import bio.overture.rollcall.config.RollcallConfig;
 import bio.overture.rollcall.model.AliasRequest;
+import bio.overture.rollcall.repository.IndexRepository;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.assertj.core.util.Lists;
@@ -55,7 +56,7 @@ public class AliasServiceTest {
   private static String INDEX3 = "file_centric_sd_preasa7s_re_foobar2";
 
   private TransportClient client;
-  private IndexService indexService;
+  private IndexRepository repository;
   private AliasService service;
 
   @Before
@@ -63,10 +64,10 @@ public class AliasServiceTest {
   public void setUp() {
     client = new PreBuiltTransportClient(Settings.builder().put("cluster.name", "docker-cluster").build())
       .addTransportAddress(new TransportAddress(InetAddress.getByName(esContainer.getIpAddress()), 10300));
-    indexService = new IndexService(client);
+    repository = new IndexRepository(client);
 
     val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric")));
-    service = new AliasService(config, indexService);
+    service = new AliasService(config, repository);
 
     client.admin().indices().prepareCreate(INDEX1).get();
     client.admin().indices().prepareCreate(INDEX2).get();
@@ -87,13 +88,13 @@ public class AliasServiceTest {
   public void releaseTest() {
     val request1 = new AliasRequest("file_centric", "RE_foobar1", Lists.list("SD_preasa7s", "sd_ygva0e1c"));
     service.release(request1);
-    val state1 = indexService.getState();
+    val state1 = repository.getAliasState();
     assertThat(state1.get(INDEX1).get(0).alias()).isEqualTo("file_centric");
     assertThat(state1.get(INDEX2).get(0).alias()).isEqualTo("file_centric");
 
     val request2 = new AliasRequest("file_centric", "RE_foobar2", Lists.list("SD_preasa7s"));
     service.release(request2);
-    val state2 = indexService.getState();
+    val state2 = repository.getAliasState();
     assertThat(state2.get(INDEX1).get(0).alias()).isEqualTo("file_centric");
     assertThat(state2.get(INDEX2).isEmpty()).isTrue();
     assertThat(state2.get(INDEX3).get(0).alias()).isEqualTo("file_centric");
