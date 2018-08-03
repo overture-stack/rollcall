@@ -16,5 +16,5 @@ docker run \
     -e "ES_HOST=$elasticsearch_host" \
     -e "ES_PORT=$elasticsearch_port" \
     -e "ES_CLUSTER_NAME=$elasticsearch_custer_name" \
-    --name $container_name
+    --name $container_name \
     $image_name
