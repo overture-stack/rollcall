@@ -2,11 +2,11 @@
 
 server_port=8080
 network_id=default
-elasticsearch_host=kf-es
+elasticsearch_host=http://localhost
 elasticsearch_port=9300
 elasticsearch_custer_name=kf-es
 image_name=rollcall-1.0
-container_name=rollcall-server
+container_name=kf-rc
 
 docker run \
     -d \
