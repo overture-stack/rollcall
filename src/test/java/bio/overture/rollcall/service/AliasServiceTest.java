@@ -85,6 +85,12 @@ public class AliasServiceTest {
   }
 
   @Test
+  public void getConfiguredTest() {
+    val configured = service.getConfigured();
+    assertThat(configured).hasSize(1);
+  }
+
+  @Test
   public void releaseTest() {
     val request1 = new AliasRequest("file_centric", "RE_foobar1", Lists.list("SD_preasa7s", "sd_ygva0e1c"));
     service.release(request1);
