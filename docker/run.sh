@@ -2,7 +2,7 @@
 
 server_port=8080
 network_id=default
-elasticsearch_host=http://localhost
+elasticsearch_host=localhost
 elasticsearch_port=9300
 elasticsearch_custer_name=kf-es
 image_name=rollcall-1.0
