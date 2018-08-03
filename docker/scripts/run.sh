@@ -26,11 +26,12 @@ if [  -z ${ES_CLUSTER_NAME+x} ]; then
     exit 1
 fi
 
-CONFIG_FILE=/conf/application.properties
-mkdir /conf
+CONF_DIR=/conf
+mkdir $CONF_DIR
+CONFIG_FILE=${CONF_DIR}/application.properties
 echo "elasticsearch.host=$ES_HOST" > $CONFIG_FILE
 echo "elasticsearch.port=$ES_PORT" >> $CONFIG_FILE
 echo "elasticsearch.cluster-name=$ES_CLUSTER_NAME" >> $CONFIG_FILE
 
-java -Dspring.config.location=/conf/application.properties  -jar $JAR_PATH
+java -Dspring.config.location=classpath:/application.yml,file:${CONFIG_FILE}  -jar $JAR_PATH
 
