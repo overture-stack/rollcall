@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpMethod;
@@ -50,6 +51,7 @@ import java.util.Collections;
 @Slf4j
 @EnableWebSecurity
 @EnableResourceServer
+@Profile("!test")
 public class WebSecurityConfig extends ResourceServerConfigurerAdapter {
 
   @Autowired // Field injection bad, but clean in this spot.
