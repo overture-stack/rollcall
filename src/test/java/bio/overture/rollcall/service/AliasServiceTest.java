@@ -19,6 +19,7 @@
 package bio.overture.rollcall.service;
 
 import bio.overture.rollcall.config.RollcallConfig;
+import bio.overture.rollcall.exception.ReleaseIntegrityException;
 import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.SneakyThrows;
@@ -40,6 +41,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import java.net.InetAddress;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class AliasServiceTest {
 
@@ -104,6 +106,23 @@ public class AliasServiceTest {
     assertThat(state2.get(INDEX1).get(0).alias()).isEqualTo("file_centric");
     assertThat(state2.get(INDEX2).isEmpty()).isTrue();
     assertThat(state2.get(INDEX3).get(0).alias()).isEqualTo("file_centric");
+  }
+
+  @Test
+  public void testReleaseNonDestructiveFailurePreFlight() {
+    val request1 = new AliasRequest("file_centric", "RE_foobar1", Lists.list("SD_preasa7s", "sd_ygva0e1c"));
+    service.release(request1);
+    val state1 = repository.getAliasState();
+    assertThat(state1.get(INDEX1).get(0).alias()).isEqualTo("file_centric");
+    assertThat(state1.get(INDEX2).get(0).alias()).isEqualTo("file_centric");
+
+    val badRequest = new AliasRequest("file_centric", "THIS_RELEASE_DONT_EXIST", Lists.list("SD_preasa7s", "sd_ygva0e1c"));
+    assertThatThrownBy(() -> service.release(badRequest)).isInstanceOf(ReleaseIntegrityException.class);
+
+    // Should not have changed.
+    val state2 = repository.getAliasState();
+    assertThat(state2.get(INDEX1).get(0).alias()).isEqualTo("file_centric");
+    assertThat(state2.get(INDEX2).get(0).alias()).isEqualTo("file_centric");
   }
 
 }
