@@ -36,9 +36,15 @@ jobs:
         - ~/.m2
         key: v1-dependencies-{{ checksum "pom.xml" }}
     # Run Tests
+    # - run:
+    #     name: Maven Test
+    #     command: |
+    #       mvn test \
+    #       -D spring.profiles.active=test
     - run:
         name: Maven Test
         command: |
-          mvn test \
-          -D spring.profiles.active=test
+          docker create -v /repo --name repo alpine:3.8 /bin/true
+          docker cp ~/repo repo:/
+          docker run --volumes-from repo -v /var/run/docker.sock:/var/run/docker.sock -w /repo circleci/openjdk:11-jdk-sid mvn test -D spring.profiles.active=test
 
