@@ -3,12 +3,11 @@
 # Check https://circleci.com/docs/2.0/language-java/ for more details
 #
 version: 2
-executorType: machine
 jobs:
   build:
     docker:
     # specify the version you desire here
-    - image: circleci/openjdk:8-jdk
+    - image: circleci/openjdk:11-jdk-sid
 
     # Specify service dependencies here if necessary
     # CircleCI maintains a library of pre-built images
@@ -23,21 +22,19 @@ jobs:
 
     steps:
     - checkout
-
+    - setup_remote_docker:
+        version: 18.05.0-ce
     # Download and cache dependencies
     - restore_cache:
         keys:
         - v1-dependencies-{{ checksum "pom.xml" }}
         # fallback to using the latest cache if no exact match is found
         - v1-dependencies-
-
     - run: mvn dependency:go-offline
-
     - save_cache:
         paths:
         - ~/.m2
         key: v1-dependencies-{{ checksum "pom.xml" }}
-
     # Run Tests
     - run:
         name: Maven Test
