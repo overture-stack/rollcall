@@ -5,9 +5,7 @@
 version: 2
 jobs:
   build:
-    docker:
-    # specify the version you desire here
-    - image: circleci/openjdk:11-jdk-sid
+    machine: true
 
     # Specify service dependencies here if necessary
     # CircleCI maintains a library of pre-built images
@@ -22,8 +20,23 @@ jobs:
 
     steps:
     - checkout
-    - setup_remote_docker:
-        version: 18.05.0-ce
+    # Download and cache openjdk11
+    - restore_cache:
+        keys:
+        - openjdk-11
+    - run:
+        name: install openjdk11
+        command: |
+          if [ ! -d $PWD/jdk-11.0.1 ]
+            then
+              wget https://download.java.net/java/GA/jdk11/13/GPL/openjdk-11.0.1_linux-x64_bin.tar.gz
+              tar -xvf openjdk-11.0.1_linux-x64_bin.tar.gz
+          fi
+    - save_cache:
+        paths:
+        - ~/repo/jdk-11.0.1
+        key: openjdk-11
+
     # Download and cache dependencies
     - restore_cache:
         keys:
@@ -35,16 +48,9 @@ jobs:
         paths:
         - ~/.m2
         key: v1-dependencies-{{ checksum "pom.xml" }}
-    # Run Tests
-    # - run:
-    #     name: Maven Test
-    #     command: |
-    #       mvn test \
-    #       -D spring.profiles.active=test
+
     - run:
         name: Maven Test
         command: |
-          docker create -v /repo --name repo alpine:3.8 /bin/true
-          docker cp ~/repo repo:/
-          docker run --volumes-from repo -v /var/run/docker.sock:/var/run/docker.sock -w /repo circleci/openjdk:11-jdk-sid mvn test -D spring.profiles.active=test
+          JAVA_HOME=$PWD/jdk-11.0.1 mvn test -D spring.profiles.active=test
 
