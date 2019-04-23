@@ -3,12 +3,9 @@
 # Check https://circleci.com/docs/2.0/language-java/ for more details
 #
 version: 2
-executorType: machine
 jobs:
   build:
-    docker:
-    # specify the version you desire here
-    - image: circleci/openjdk:8-jdk
+    machine: true
 
     # Specify service dependencies here if necessary
     # CircleCI maintains a library of pre-built images
@@ -23,6 +20,22 @@ jobs:
 
     steps:
     - checkout
+    # Download and cache openjdk11
+    - restore_cache:
+        keys:
+        - openjdk-11
+    - run:
+        name: install openjdk11
+        command: |
+          if [ ! -d $PWD/jdk-11.0.1 ]
+            then
+              wget https://download.java.net/java/GA/jdk11/13/GPL/openjdk-11.0.1_linux-x64_bin.tar.gz
+              tar -xvf openjdk-11.0.1_linux-x64_bin.tar.gz
+          fi
+    - save_cache:
+        paths:
+        - ~/repo/jdk-11.0.1
+        key: openjdk-11
 
     # Download and cache dependencies
     - restore_cache:
@@ -30,18 +43,14 @@ jobs:
         - v1-dependencies-{{ checksum "pom.xml" }}
         # fallback to using the latest cache if no exact match is found
         - v1-dependencies-
-
     - run: mvn dependency:go-offline
-
     - save_cache:
         paths:
         - ~/.m2
         key: v1-dependencies-{{ checksum "pom.xml" }}
 
-    # Run Tests
     - run:
         name: Maven Test
         command: |
-          mvn test \
-          -D spring.profiles.active=test
+          JAVA_HOME=$PWD/jdk-11.0.1 mvn test -D spring.profiles.active=test
 
