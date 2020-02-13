@@ -20,12 +20,13 @@ package bio.overture.rollcall.repository;
 
 import lombok.SneakyThrows;
 import lombok.val;
+import org.apache.http.HttpHost;
 import org.assertj.core.util.Lists;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.TransportAddress;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.junit.*;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
@@ -40,7 +41,7 @@ public class IndexRepositoryTest {
 
   @ClassRule
   public static GenericContainer esContainer =
-    new FixedHostPortGenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.3.2")
+    new FixedHostPortGenericContainer("docker.elastic.co/elasticsearch/elasticsearch:7.5.2")
       .withFixedExposedPort(10200, 9200)
       .withFixedExposedPort(10300, 9300)
       .waitingFor(Wait.forHttp("/")) // Wait until elastic start
@@ -50,32 +51,31 @@ public class IndexRepositoryTest {
   private static String INDEX2 = "file_centric_sd_preasa7s_re_foobar";
   private static String INDEX3 = "file_centric_sd_46sk55a3_re_foobar";
 
-  private TransportClient client;
+  private RestHighLevelClient client;
   private IndexRepository repository;
 
   @Before
   @SneakyThrows
   public void setUp() {
-    client = new PreBuiltTransportClient(Settings.builder().put("cluster.name", "docker-cluster").build())
-      .addTransportAddress(new TransportAddress(InetAddress.getByName(esContainer.getIpAddress()), 10300));
+    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
     repository = new IndexRepository(client);
 
-    client.admin().indices().prepareCreate(INDEX1).get();
-    client.admin().indices().prepareCreate(INDEX2).get();
-    client.admin().indices().prepareCreate(INDEX3).get();
-    client.admin().indices().prepareCreate("badindex").get();
+    client.indices().create(new CreateIndexRequest(INDEX1), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEX2), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEX3), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest("badindex"), RequestOptions.DEFAULT);
 
     TimeUnit.SECONDS.sleep(1);
   }
 
-    @After
-    @SneakyThrows
-    public void tearDown() {
-      client.admin().indices().delete(new DeleteIndexRequest(INDEX1)).get();
-      client.admin().indices().delete(new DeleteIndexRequest(INDEX2)).get();
-      client.admin().indices().delete(new DeleteIndexRequest(INDEX3)).get();
-      client.admin().indices().delete(new DeleteIndexRequest("badindex")).get();
-    }
+  @After
+  @SneakyThrows
+  public void tearDown() {
+    client.indices().delete(new DeleteIndexRequest(INDEX1), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest(INDEX2), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest(INDEX3), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest("badindex"), RequestOptions.DEFAULT);
+  }
 
   @Test
   @SneakyThrows

@@ -22,8 +22,9 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
-import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,30 +32,34 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions.*;
 
 @Repository
 public class IndexRepository {
 
-  private final TransportClient client;
+  private final RestHighLevelClient client;
 
   @Autowired
-  public IndexRepository(TransportClient client) {
+  public IndexRepository(RestHighLevelClient client) {
     this.client = client;
   }
 
   @SneakyThrows
   public String[] getIndices() {
-    return client.admin().indices()
-      .getIndex(new GetIndexRequest()).get()
+    return client.indices()
+      .get(new GetIndexRequest("*"), RequestOptions.DEFAULT)
       .getIndices();
   }
 
   @SneakyThrows
   public ImmutableOpenMap<String, List<AliasMetaData>> getAliasState() {
-    return client.admin().indices()
-      .getAliases(new GetAliasesRequest()).get()
-      .getAliases();
+    val aliases = client.indices().getAlias(new GetAliasesRequest(), RequestOptions.DEFAULT).getAliases();
+    val builder = new ImmutableOpenMap.Builder();
+
+    aliases.forEach((k,v) -> builder.put(k, v.stream().collect(toUnmodifiableList())));
+
+    return builder.build();
   }
 
   @SneakyThrows
@@ -65,14 +70,14 @@ public class IndexRepository {
     if (req.getAliasActions().isEmpty()) {
       return true;
     }
-    return client.admin().indices().aliases(req).get().isAcknowledged();
+    return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 
   @SneakyThrows
   public boolean addAlias(String alias, List<String> indices) {
     val req = new IndicesAliasesRequest();
     indices.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
-    return client.admin().indices().aliases(req).get().isAcknowledged();
+    return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 
 }
