@@ -20,6 +20,7 @@ package bio.overture.rollcall.index;
 
 import bio.overture.rollcall.antlr4.IndexNameLexer;
 import bio.overture.rollcall.antlr4.IndexNameParser;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.antlr.v4.runtime.CharStreams;
@@ -28,7 +29,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 public class IndexParser {
 
   @SneakyThrows
-  public static ResolvedIndex parse(String indexName) {
+  public static ResolvedIndex parse(@NonNull String indexName) {
     val result = anltrParse(indexName);
     val part = result.indexName().accept(new IndexNameVisitor());
     return reduceToResolved(part);

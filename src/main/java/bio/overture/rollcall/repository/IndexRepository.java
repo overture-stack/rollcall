@@ -18,10 +18,12 @@
 
 package bio.overture.rollcall.repository;
 
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.GetIndexRequest;
@@ -41,14 +43,14 @@ public class IndexRepository {
   private final RestHighLevelClient client;
 
   @Autowired
-  public IndexRepository(RestHighLevelClient client) {
+  public IndexRepository(@NonNull RestHighLevelClient client) {
     this.client = client;
   }
 
   @SneakyThrows
   public String[] getIndices() {
     return client.indices()
-      .get(new GetIndexRequest("*"), RequestOptions.DEFAULT)
+      .get(new GetIndexRequest("*").indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT)
       .getIndices();
   }
 
@@ -63,7 +65,7 @@ public class IndexRepository {
   }
 
   @SneakyThrows
-  public boolean removeAlias(String alias, List<String> indices) {
+  public boolean removeAlias(@NonNull String alias, @NonNull List<String> indices) {
     val req = new IndicesAliasesRequest();
     indices.forEach(i -> req.addAliasAction(remove().alias(alias).index(i)));
 
@@ -74,7 +76,7 @@ public class IndexRepository {
   }
 
   @SneakyThrows
-  public boolean addAlias(String alias, List<String> indices) {
+  public boolean addAlias(@NonNull String alias, @NonNull List<String> indices) {
     val req = new IndicesAliasesRequest();
     indices.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
     return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();

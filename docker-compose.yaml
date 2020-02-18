@@ -12,15 +12,13 @@ services:
   rollcall:
      depends_on:
        - elasticsearch
-     build:
-       context: ./
-       dockerfile: "$DOCKERFILE_NAME"
+     build: .
      ports:
        - "9001:9001"
      environment:
        ELASTICSEARCH_HOST: elasticsearch
        ELASTICSEARCH_PORT: 9200
-       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
+       SPRING_PROFILES_ACTIVE: test
 volumes:
   es_data:
     driver: local
