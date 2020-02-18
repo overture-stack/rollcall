@@ -28,6 +28,7 @@ import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.Shard;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.Data;
+import lombok.NonNull;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class AliasService {
   private final IndexRepository repository;
 
   @Autowired
-  public AliasService(RollcallConfig aliasConfig, IndexRepository repository) {
+  public AliasService(@NonNull RollcallConfig aliasConfig, @NonNull IndexRepository repository) {
     this.aliasConfig = aliasConfig;
     this.repository = repository;
   }
@@ -73,7 +74,7 @@ public class AliasService {
     .collect(toList());
   }
 
-  public boolean release(AliasRequest aliasRequest) {
+  public boolean release(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
 
     // First identify candidates and check existence of at least one.
@@ -98,7 +99,7 @@ public class AliasService {
     return addAliasToIndices(aliasRequest, candidates);
   }
 
-  public boolean remove(AliasRequest aliasRequest) {
+  public boolean remove(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
@@ -121,7 +122,7 @@ public class AliasService {
     return repository.removeAlias(alias, indices);
   }
 
-  public boolean removeAliasFromAllIndices(String alias) {
+  public boolean removeAliasFromAllIndices(@NonNull String alias) {
     List<String> existing = getIndicesWithAlias(alias);
     return repository.removeAlias(alias, existing);
   }

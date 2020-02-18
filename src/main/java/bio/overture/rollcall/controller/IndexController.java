@@ -20,6 +20,7 @@ package bio.overture.rollcall.controller;
 
 import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.service.AliasService;
+import lombok.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,7 +33,7 @@ public class IndexController {
 
   private final AliasService service;
 
-  public IndexController(AliasService service) {
+  public IndexController(@NonNull AliasService service) {
     this.service = service;
   }
 

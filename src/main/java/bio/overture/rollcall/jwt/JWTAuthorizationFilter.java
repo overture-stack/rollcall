@@ -18,6 +18,7 @@
 
 package bio.overture.rollcall.jwt;
 
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -37,7 +38,7 @@ public class JWTAuthorizationFilter extends GenericFilterBean {
 
   @Override
   @SneakyThrows
-  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) {
+  public void doFilter(@NonNull ServletRequest request, @NonNull ServletResponse response, @NonNull FilterChain chain) {
     val authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null) {
 

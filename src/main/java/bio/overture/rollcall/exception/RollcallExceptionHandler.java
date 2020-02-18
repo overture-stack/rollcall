@@ -19,6 +19,7 @@
 package bio.overture.rollcall.exception;
 
 import bio.overture.rollcall.model.ErrorResponse;
+import lombok.NonNull;
 import lombok.val;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,7 +35,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class RollcallExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(ReleaseIntegrityException.class)
-  public ResponseEntity<ErrorResponse> handleRelease(ReleaseIntegrityException ex) {
+  public ResponseEntity<ErrorResponse> handleRelease(@NonNull ReleaseIntegrityException ex) {
     val error = new ErrorResponse(
       CONFLICT.value(),
       CONFLICT,
@@ -48,7 +49,7 @@ public class RollcallExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   @ExceptionHandler(NoSuchAliasWithCandidatesException.class)
-  public ResponseEntity<ErrorResponse> handleNoAlias(NoSuchAliasWithCandidatesException ex) {
+  public ResponseEntity<ErrorResponse> handleNoAlias(@NonNull NoSuchAliasWithCandidatesException ex) {
     val error = new ErrorResponse(
       NOT_FOUND.value(),
       NOT_FOUND,

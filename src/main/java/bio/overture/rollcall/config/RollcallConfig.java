@@ -21,6 +21,7 @@ package bio.overture.rollcall.config;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,7 +35,7 @@ public class RollcallConfig {
 
   public RollcallConfig() {}
 
-  public RollcallConfig(List<ConfiguredAlias> aliases) {
+  public RollcallConfig(@NonNull List<ConfiguredAlias> aliases) {
     this.aliases = aliases;
   }
 
@@ -42,7 +43,7 @@ public class RollcallConfig {
     return aliases;
   }
 
-  public void setAliases( List<ConfiguredAlias> aliases) {
+  public void setAliases(@NonNull List<ConfiguredAlias> aliases) {
     this.aliases = aliases;
   }
 

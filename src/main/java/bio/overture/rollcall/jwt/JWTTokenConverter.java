@@ -19,6 +19,7 @@
 package bio.overture.rollcall.jwt;
 
 import bio.overture.rollcall.util.TypeUtils;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
@@ -36,7 +37,7 @@ public class JWTTokenConverter extends JwtAccessTokenConverter {
   }
 
   @Override
-  public OAuth2Authentication extractAuthentication(Map<String, ?> map) {
+  public OAuth2Authentication extractAuthentication(@NonNull Map<String, ?> map) {
     OAuth2Authentication authentication = super.extractAuthentication(map);
 
     val context = (Map<String, ?>) map.get("context");
