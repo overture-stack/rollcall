@@ -19,11 +19,11 @@ ENV APP_UID 9999
 ENV APP_GID 9999
 
 RUN addgroup -S -g $APP_GID $APP_USER  \
-    && adduser -S -u $APP_UID -g $APP_GID $APP_USER  \
+    && adduser -S -u $APP_UID -G $APP_USER  $APP_USER \
     && mkdir -p $APP_HOME $APP_LOGS \
     && chown -R $APP_UID:$APP_GID $APP_HOME
 
-USER $APP_USER
+USER $APP_UID
 
 WORKDIR $APP_HOME
 
