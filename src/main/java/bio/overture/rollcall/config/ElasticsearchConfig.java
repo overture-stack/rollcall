@@ -26,7 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.net.InetAddress;
+import java.net.URL;
 
 @Configuration
 public class ElasticsearchConfig {
@@ -43,7 +43,7 @@ public class ElasticsearchConfig {
   public RestHighLevelClient restClient() {
     return new RestHighLevelClient(
       RestClient.builder(
-        new HttpHost(InetAddress.getByName(host), port)
+        new HttpHost(new URL(host).getHost(), port)
       )
     );
   }
