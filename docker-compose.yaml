@@ -17,16 +17,16 @@ services:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
       - "5601:5601"
-#  rollcall:
-#     depends_on:
-#       - elasticsearch
-#     build: .
-#     ports:
-#       - "9001:9001"
-#     environment:
-#       ELASTICSEARCH_HOST: http://elasticsearch
-#       ELASTICSEARCH_PORT: 9200
-#       SPRING_PROFILES_ACTIVE: test
+  rollcall:
+     depends_on:
+       - elasticsearch
+     build: .
+     ports:
+       - "9001:9001"
+     environment:
+       ELASTICSEARCH_HOST: http://elasticsearch
+       ELASTICSEARCH_PORT: 9200
+       SPRING_PROFILES_ACTIVE: test
 volumes:
   es_data:
     driver: local

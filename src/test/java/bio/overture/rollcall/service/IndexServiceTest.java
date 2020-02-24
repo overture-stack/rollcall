@@ -81,26 +81,27 @@ public class IndexServiceTest {
 
     @Test
     public void testIndexCreationAndUpdatedRelease() {
+        // start with an index
         val START_INDEX = "file_centric_sd_kkde23_re_foobar1" ;
         repository.createIndex(START_INDEX);
 
-        // create new index, an index with the parameters already exists so it should create with updated release number
+        // create new index, an index with the parameters already exists so it should create index with updated release value
         val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false, null);
-        service.createResolvableIndex(req1);
+        val newResolvedIndex = service.createResolvableIndex(req1);
+        assertThat(newResolvedIndex.getIndexName()).isEqualTo("file_centric_sd_kkde23_re_2"); // previous release had major int 1, so bump to 2
 
         val candidiates = aliasService.getRelevantCandidates("file_centric");
-
         assertThat(candidiates.getIndices().size()).isEqualTo(2);
         assertThat(candidiates.getIndices())
                 .extracting(i -> i.getRelease())
                 .containsExactlyInAnyOrder("foobar1",  "2");
 
 
-        // create new index, an index with the parameters already exists so it should create with updated release number
-        service.createResolvableIndex(req1);
+        // create new index, two index with the parameters already exists so it should create a third index with updated release value
+        val anotherNewResolvedIndex = service.createResolvableIndex(req1);
+        assertThat(anotherNewResolvedIndex.getIndexName()).isEqualTo("file_centric_sd_kkde23_re_3"); // previous release had major int 2, so bump to 3
 
         val candidiatesAfterSecondAdd = aliasService.getRelevantCandidates("file_centric");
-
         assertThat(candidiatesAfterSecondAdd.getIndices().size()).isEqualTo(3);
         assertThat(candidiatesAfterSecondAdd.getIndices())
                 .extracting(i -> i.getRelease())
@@ -108,42 +109,39 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testIndexCreationAndUpdatedReleaseWithMultiplePart() {
-        val START_INDEX = "file_centric_sd_kkde23_re_v1b1" ; // imagine this is an beta 1 - ver 1 index
+    public void testIndexCreationAndUpdatedReleaseValuWithMultiplePart() {
+        // start with one index
         repository.createIndex("file_centric_sd_kkde23_re_v1b1");
 
-        // create new index, an index with the parameters already exists so it should create with updated release number
+        // create new index, a similar index already exists so it should create new index with updated release value
         val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false, null);
-
         val newIndexName = service.createResolvableIndex(req1).getIndexName();
-        assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_1");
+        assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_1"); // major release 1 didn't exist so it made one
 
         val candidiates = aliasService.getRelevantCandidates("file_centric");
-
         assertThat(candidiates.getIndices().size()).isEqualTo(2);
         assertThat(candidiates.getIndices())
                 .extracting(i -> i.getRelease())
                 .containsExactlyInAnyOrder("v1b1",  "1");
 
+        // add a third index
+        repository.createIndex("file_centric_sd_kkde23_re_v1b2");
 
-        repository.createIndex("file_centric_sd_kkde23_re_v1b2"); // now we added a second ver 1 beta
-
-        // create new index, an index with the parameters already exists so it should create with updated release number
-       val newIndexAfterBetaTwo = service.createResolvableIndex(req1).getIndexName();
+        // create new index, three index with same parameters already exists so it should create a fourth index with updated release value
+        val newIndexAfterBetaTwo = service.createResolvableIndex(req1).getIndexName();
         assertThat(newIndexAfterBetaTwo).isEqualTo("file_centric_sd_kkde23_re_2");
 
-        val candidiatesAfterSecondAdd = aliasService.getRelevantCandidates("file_centric");
-
-
-        assertThat(candidiatesAfterSecondAdd.getIndices().size()).isEqualTo(4);
-        assertThat(candidiatesAfterSecondAdd.getIndices())
+        val candidatesAfterSecondAdd = aliasService.getRelevantCandidates("file_centric");
+        assertThat(candidatesAfterSecondAdd.getIndices().size()).isEqualTo(4);
+        assertThat(candidatesAfterSecondAdd.getIndices())
                 .extracting(i -> i.getRelease())
-                .containsExactlyInAnyOrder("v1b1", "v1b2",  "1", "2");
+                .containsExactlyInAnyOrder("v1b1", "v1b2", "1", "2");
     }
 
     @Test
     @SneakyThrows
     public void testIndexCloneAndUpdatedRelease() {
+        // start with an index with one document and it's set to readonly
         val originalIndexName = "file_centric_sd_kkde23_re_1";
         repository.createIndex(originalIndexName);
         client.index(new IndexRequest(originalIndexName).id("1").source("{ \"testKey\": \"testVal\" }", XContentType.JSON), RequestOptions.DEFAULT);
@@ -151,17 +149,15 @@ public class IndexServiceTest {
                 new UpdateSettingsRequest(originalIndexName).settings("{ \"index.blocks.write\": true }", XContentType.JSON),
                 RequestOptions.DEFAULT
         );
-        // create new index, an index with the parameters already exists so it should create with updated release number
-        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd" , "kkde23", "re", true, null);
 
+        // create new index, this request is asking to clone existing index, so it should clone existing index and update release version
+        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd" , "kkde23", "re", true, null);
         val newIndexName = service.createResolvableIndex(req1).getIndexName();
         assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_2");
 
-        val candidiates = aliasService.getRelevantCandidates("file_centric");
-
-        assertThat(candidiates.getIndices().size()).isEqualTo(2);
-        assertThat(candidiates.getIndices()).extracting(i -> i.getRelease()).contains("1",  "2");
-
+        val candidates = aliasService.getRelevantCandidates("file_centric");
+        assertThat(candidates.getIndices().size()).isEqualTo(2);
+        assertThat(candidates.getIndices()).extracting(i -> i.getRelease()).contains("1",  "2");
 
         val document1 = client.get(new GetRequest(originalIndexName, "1"), RequestOptions.DEFAULT).getSourceAsMap();
         val document2 = client.get(new GetRequest(newIndexName, "1"), RequestOptions.DEFAULT).getSourceAsMap();
@@ -172,7 +168,7 @@ public class IndexServiceTest {
 
     @Test
     @SneakyThrows
-    public void testResolvedIndexReleaseComparator() {
+    public void testResolvedIndexByReleaseComparator() {
         final String[] dummyIndexNames = {
                 "file_centric_sd_kkde23_re_2",
                 "file_centric_sd_kkde23_re_1",
