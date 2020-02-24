@@ -24,10 +24,10 @@ import bio.overture.rollcall.exception.NoSuchAliasWithCandidatesException;
 import bio.overture.rollcall.exception.ReleaseIntegrityException;
 import bio.overture.rollcall.index.IndexParser;
 import bio.overture.rollcall.index.ResolvedIndex;
+import bio.overture.rollcall.model.AliasCandidates;
 import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.Shard;
 import bio.overture.rollcall.repository.IndexRepository;
-import lombok.Data;
 import lombok.NonNull;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,16 +74,22 @@ public class AliasService {
     .collect(toList());
   }
 
+  public AliasCandidates getRelevantCandidates(String alias) {
+    val candidatesOpt = this.getCandidates()
+            .stream()
+            .filter(c -> c.getAlias().getAlias().equals(alias))
+            .findFirst();
+    if (!candidatesOpt.isPresent()) {
+      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
+    }
+    return candidatesOpt.get();
+  }
+
   public boolean release(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
 
     // First identify candidates and check existence of at least one.
-    val candidatesOpt = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
-    if (!candidatesOpt.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
-    val candidates = candidatesOpt.get();
+    val candidates = this.getRelevantCandidates(alias);
 
     // Now do a pre-flight check to see if target indices exist and resolve correctly before continuing.
     val indicesToRelease = getIndicesForRelease(candidates, aliasRequest.getRelease().toLowerCase().split("_"), getShardsFromRequest(aliasRequest));
@@ -170,12 +176,6 @@ public class AliasService {
       .filter(i -> i.getReleasePrefix().equals(release[0]) && i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
-  }
-
-  @Data
-  public class AliasCandidates {
-    private final ConfiguredAlias alias;
-    private final List<ResolvedIndex> indices;
   }
 
 }

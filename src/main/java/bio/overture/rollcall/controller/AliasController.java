@@ -20,6 +20,7 @@ package bio.overture.rollcall.controller;
 
 import bio.overture.rollcall.config.RollcallConfig.ConfiguredAlias;
 import bio.overture.rollcall.model.AliasRequest;
+import bio.overture.rollcall.model.AliasCandidates;
 import bio.overture.rollcall.service.AliasService;
 import lombok.NonNull;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class AliasController {
   }
 
   @GetMapping("candidates")
-  public List<AliasService.AliasCandidates> getCandidates() {
+  public List<AliasCandidates> getCandidates() {
     return service.getCandidates();
   }
 

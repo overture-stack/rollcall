@@ -23,9 +23,12 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
@@ -82,4 +85,15 @@ public class IndexRepository {
     return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 
+  @SneakyThrows
+  public boolean createIndex(@NonNull String indexName) {
+    return client.indices().create(new CreateIndexRequest(indexName), RequestOptions.DEFAULT).isAcknowledged();
+  }
+
+  @SneakyThrows
+  public boolean cloneIndex(@NonNull String indexToClone, String newIndexName) {
+    val req = new ResizeRequest(newIndexName, indexToClone);
+    req.setResizeType(ResizeType.CLONE);
+    return client.indices().clone(req, RequestOptions.DEFAULT).isAcknowledged();
+  }
 }

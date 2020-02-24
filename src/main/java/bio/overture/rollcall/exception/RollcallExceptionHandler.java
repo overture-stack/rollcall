@@ -21,6 +21,7 @@ package bio.overture.rollcall.exception;
 import bio.overture.rollcall.model.ErrorResponse;
 import lombok.NonNull;
 import lombok.val;
+import org.elasticsearch.ElasticsearchException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,6 +31,7 @@ import static com.google.common.collect.ImmutableMap.of;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 
 @RestControllerAdvice
 public class RollcallExceptionHandler extends ResponseEntityExceptionHandler {
@@ -59,4 +61,14 @@ public class RollcallExceptionHandler extends ResponseEntityExceptionHandler {
     return new ResponseEntity<>(error, NOT_FOUND);
   }
 
+  @ExceptionHandler(ElasticsearchException.class)
+  public ResponseEntity<ErrorResponse> handleElasticSearchError(@NonNull ElasticsearchException ex) {
+    val error = new ErrorResponse(
+            INTERNAL_SERVER_ERROR.value(),
+            INTERNAL_SERVER_ERROR,
+            ex.getMessage(),
+            emptyMap());
+
+    return new ResponseEntity<>(error, INTERNAL_SERVER_ERROR);
+  }
 }
