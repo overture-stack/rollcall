@@ -32,6 +32,7 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -87,13 +88,26 @@ public class IndexRepository {
 
   @SneakyThrows
   public boolean createIndex(@NonNull String indexName) {
+    return createIndex(indexName, "{}");
+  }
+
+  @SneakyThrows
+  public boolean createIndex(@NonNull String indexName, @NonNull String settings) {
+    val req = new CreateIndexRequest(indexName);
+    req.settings(settings, XContentType.JSON);
     return client.indices().create(new CreateIndexRequest(indexName), RequestOptions.DEFAULT).isAcknowledged();
   }
 
   @SneakyThrows
-  public boolean cloneIndex(@NonNull String indexToClone, String newIndexName) {
+  public boolean cloneIndex(@NonNull String indexToClone, @NonNull String newIndexName) {
+    return cloneIndex(indexToClone, newIndexName, "{}");
+  }
+
+  @SneakyThrows
+  public boolean cloneIndex(@NonNull String indexToClone, @NonNull String newIndexName, @NonNull String settings) {
     val req = new ResizeRequest(newIndexName, indexToClone);
     req.setResizeType(ResizeType.CLONE);
+    req.getTargetIndexRequest().settings(settings, XContentType.JSON);
     return client.indices().clone(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 }

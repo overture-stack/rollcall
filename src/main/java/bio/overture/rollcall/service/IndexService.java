@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,103 +47,113 @@ public class IndexService {
         this.aliasService = aliasService;
     }
 
-    public List<ResolvedIndex> getResolved() {
-        return aliasService.getResolved();
-    }
+    public List<ResolvedIndex> getResolved() {  return aliasService.getResolved();  }
 
     public ResolvedIndex createResolvableIndex(@NonNull CreateResolvableIndexRequest createResolvableIndexRequest) {
-        val alias = createResolvableIndexRequest.getEntity() + '_' + createResolvableIndexRequest.getType();
-        val shard = createResolvableIndexRequest.getShard();
-        val shardPrefix = createResolvableIndexRequest.getShardPrefix();
+        val clone = createResolvableIndexRequest.getClone();
+        val newIndexSettings = createResolvableIndexRequest.getIndexSetting();
 
-        // get relevant candidates for alias
-        val aliasCandidates = aliasService.getRelevantCandidates(alias);
-        val existingIndices = aliasCandidates.getIndices().stream()
-                .filter(i -> i.getShard().equals(shard) && i.getShardPrefix().equals(shardPrefix))
-                .collect(Collectors.toList());
+        // parse request into a dummyResolvedIndex to make sure the parameters are valid, release version is irrelevant here
+        val dummyResolvedIndex = generateResolvedIndex(createResolvableIndexRequest, 1);
 
-        // no existing index with given shard prefix + shard name, so make new one
-        if (existingIndices.size() == 0) {
-            val newIndexName = generateNewIndexName(createResolvableIndexRequest, 1);
-            repository.createIndex(newIndexName);
-            return IndexParser.parse(newIndexName);
+        // get existing resolved indices with the same alias and shard values
+        val existingResolvedIndices = getRelevantResolvedIndices(dummyResolvedIndex);
+
+        // find resolved index with latest release value in existing resolved indices
+        val latestResolvedIndex = existingResolvedIndices.stream().max(ResolvedIndexByReleaseComparator);
+
+        // get release value for new index to be created
+        val newReleaseValue = calculateNewReleaseValue(latestResolvedIndex);
+
+        // generate resolved index object, with new release value to make sure it is still valid
+        val newResolvedIndex = generateResolvedIndex(createResolvableIndexRequest, newReleaseValue);
+
+        val newIndexName = newResolvedIndex.getIndexName();
+
+        // clone if requested and possible to do so, otherwise create
+        if (latestResolvedIndex.isPresent() && clone) {
+            val latestResolvedIndexName = latestResolvedIndex.get().getIndexName();
+            log.info("Index to clone: " + latestResolvedIndexName);
+            repository.cloneIndex(latestResolvedIndexName, newIndexName, newIndexSettings);
+        } else {
+            repository.createIndex(newIndexName, newIndexSettings);
         }
 
-        // find resolved index with latest release
-        val indexOfInterest = existingIndices.stream().max(releaseComparator).get();
-
-        // make new index name - with release version incremented
-        val newIndexName = generateNewIndexName(createResolvableIndexRequest, indexOfInterest);
-
-        // create or clone
-        log.info("Index to clone: " + indexOfInterest.getIndexName());
         log.info("New cloned/created index name: " + newIndexName);
-        if (createResolvableIndexRequest.getClone()) {
-            repository.cloneIndex(indexOfInterest.getIndexName(), newIndexName);
-        } else  {
-            repository.createIndex(newIndexName);
-        }
-
-        // return new index details
-        return IndexParser.parse(newIndexName);
+        return newResolvedIndex;
     }
 
-    private String generateNewIndexName(CreateResolvableIndexRequest createResolvableIndexRequest, ResolvedIndex indexToRef) {
-        int[] currReleaseInts = getReleaseIntegerParts(indexToRef.getRelease()); //take the release ints
+    private List<ResolvedIndex> getRelevantResolvedIndices(ResolvedIndex testResolvableIndex) {
+        val alias = testResolvableIndex.getEntity() + '_' + testResolvableIndex.getType();
+        val shard = testResolvableIndex.getShard();
+        val shardPrefix = testResolvableIndex.getShardPrefix();
+        return aliasService
+                .getRelevantCandidates(alias)
+                .getIndices().stream()
+                .filter(i -> i.getShard().equals(shard) && i.getShardPrefix().equals(shardPrefix))
+                .collect(Collectors.toList());
+    }
+
+    private int calculateNewReleaseValue(Optional<ResolvedIndex> indexToRef) {
+        if (indexToRef.isEmpty()) {
+            return 1;
+        }
+
+        int[] currReleaseIntParts = getReleaseIntegerParts(indexToRef.get().getRelease());
         int newRelease;
         try {
-            newRelease = currReleaseInts[0];
-            newRelease +=  currReleaseInts.length == 1 ? 1 : 0; // increment if previous release was major only
+            newRelease = currReleaseIntParts[0];
+            newRelease +=  currReleaseIntParts.length == 1 ? 1 : 0; // increment if previous release was major with no extensions (e.g. beta)
         } catch (NumberFormatException e) {
             newRelease = 1;
         }
-
-        return  generateNewIndexName(createResolvableIndexRequest, newRelease);
+        return newRelease;
     }
 
-    private String generateNewIndexName(CreateResolvableIndexRequest createResolvableIndexRequest, int release) {
-        return  createResolvableIndexRequest.getEntity() + '_'
+    private ResolvedIndex generateResolvedIndex(CreateResolvableIndexRequest createResolvableIndexRequest, int release) {
+        val indexName = createResolvableIndexRequest.getEntity() + '_'
                 + createResolvableIndexRequest.getType() + '_'
                 + createResolvableIndexRequest.getShardPrefix() + '_'
                 + createResolvableIndexRequest.getShard() + '_'
                 + createResolvableIndexRequest.getReleasePrefix() + '_' + release;
+        return IndexParser.parse(indexName);
     }
 
-    private Comparator<ResolvedIndex> releaseComparator = (firstIndex, secondIndex) -> {
-        if (firstIndex.getRelease().equals((secondIndex.getRelease()))) {
+    private static int[] getReleaseIntegerParts(String releaseStr) {
+        return Arrays.stream(releaseStr.split("[^\\d]+")).filter(s -> !s.isEmpty()).mapToInt(Integer::parseInt).toArray();
+    }
+
+    public static final Comparator<ResolvedIndex> ResolvedIndexByReleaseComparator = (firstResolvedIndex, secondResolvedIndex) -> {
+        if (firstResolvedIndex.getRelease().equals((secondResolvedIndex.getRelease()))) {
             return 0;
         }
 
-        val firstIndexReleaseIntParts = getReleaseIntegerParts(firstIndex.getRelease());
-        val secondIndexReleaseIntParts = getReleaseIntegerParts(secondIndex.getRelease());
+        val firstIndexReleaseIntParts = getReleaseIntegerParts(firstResolvedIndex.getRelease());
+        val secondIndexReleaseIntParts = getReleaseIntegerParts(secondResolvedIndex.getRelease());
 
-        // consider major releases with no additional numerics
+        // first consider major releases with no additional numbers
         if (firstIndexReleaseIntParts.length == 1 && firstIndexReleaseIntParts[0] >= secondIndexReleaseIntParts[0]) {
             return 1;
         } else if (secondIndexReleaseIntParts.length == 1  && firstIndexReleaseIntParts[0] <= secondIndexReleaseIntParts[0]) {
             return -1;
         }
 
-        // compare the integer values of both indices, going through each pair until finding a pair that are not equal
-        int i = 0;
+        // next compare the integer values of both indices, going through each pair until finding a pair that are not equal
+        int i = 1;
         while (i < firstIndexReleaseIntParts.length && i < secondIndexReleaseIntParts.length) {
-            int firstIndexRelease = firstIndexReleaseIntParts[i];
-            int secondIndexRelease = secondIndexReleaseIntParts[i];
+            int firstIndexReleaseIntPart = firstIndexReleaseIntParts[i];
+            int secondIndexReleaseIntPart = secondIndexReleaseIntParts[i];
 
-            if (firstIndexRelease > secondIndexRelease)
+            if (firstIndexReleaseIntPart > secondIndexReleaseIntPart)
                 return 1;
-            else if (firstIndexRelease < secondIndexRelease)
+            else if (firstIndexReleaseIntPart < secondIndexReleaseIntPart)
                 return -1;
 
             // both are equal, so keep looking
             i++;
         }
 
-        // found no difference, both have same major release ints
+        // found no difference, both have same release integer pairs
         return 0;
     };
-
-    private int[] getReleaseIntegerParts(String releaseStr) {
-        return Arrays.stream(releaseStr.split("[^\\d]+")).filter(s -> !s.isEmpty()).mapToInt(Integer::parseInt).toArray();
-    }
 }

@@ -19,6 +19,8 @@
 package bio.overture.rollcall.service;
 
 import bio.overture.rollcall.config.RollcallConfig;
+import bio.overture.rollcall.index.IndexParser;
+import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.model.CreateResolvableIndexRequest;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.SneakyThrows;
@@ -39,6 +41,9 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,7 +85,7 @@ public class IndexServiceTest {
         repository.createIndex(START_INDEX);
 
         // create new index, an index with the parameters already exists so it should create with updated release number
-        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false);
+        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false, null);
         service.createResolvableIndex(req1);
 
         val candidiates = aliasService.getRelevantCandidates("file_centric");
@@ -108,7 +113,7 @@ public class IndexServiceTest {
         repository.createIndex("file_centric_sd_kkde23_re_v1b1");
 
         // create new index, an index with the parameters already exists so it should create with updated release number
-        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false);
+        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", false, null);
 
         val newIndexName = service.createResolvableIndex(req1).getIndexName();
         assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_1");
@@ -147,7 +152,7 @@ public class IndexServiceTest {
                 RequestOptions.DEFAULT
         );
         // create new index, an index with the parameters already exists so it should create with updated release number
-        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd" , "kkde23", "re", true);
+        val req1 = new CreateResolvableIndexRequest("file", "centric", "sd" , "kkde23", "re", true, null);
 
         val newIndexName = service.createResolvableIndex(req1).getIndexName();
         assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_2");
@@ -163,5 +168,37 @@ public class IndexServiceTest {
 
         // clone so both documents should have same fields
         assertThat(document1).isEqualTo(document2);
+    }
+
+    @Test
+    @SneakyThrows
+    public void testResolvedIndexReleaseComparator() {
+        final String[] dummyIndexNames = {
+                "file_centric_sd_kkde23_re_2",
+                "file_centric_sd_kkde23_re_1",
+                "file_centric_sd_kkde23_re_2",
+                "file_centric_sd_kkde23_re_3",
+                "file_centric_sd_kkde23_re_3beta1",
+                "file_centric_sd_kkde23_re_3beta2",
+                "file_centric_sd_kkde23_re_3beta1",
+        };
+        final List<ResolvedIndex> resolvedIndices = Arrays.stream(dummyIndexNames).map(name -> IndexParser.parse(name)).collect(Collectors.toList());
+
+        // list has resolved indices in generated order
+        assertThat(resolvedIndices.stream().map(ri -> ri.getIndexName())).containsExactly(dummyIndexNames);
+
+        // sort collection of resolved indices
+        resolvedIndices.sort(IndexService.ResolvedIndexByReleaseComparator);
+
+        // assert expected order of list after sorting, order is oldest to latest
+        assertThat(resolvedIndices.stream().map(ri -> ri.getIndexName())).containsExactly(
+                "file_centric_sd_kkde23_re_1",
+                "file_centric_sd_kkde23_re_2",
+                "file_centric_sd_kkde23_re_2",
+                "file_centric_sd_kkde23_re_3beta1",
+                "file_centric_sd_kkde23_re_3beta1",
+                "file_centric_sd_kkde23_re_3beta2",
+                "file_centric_sd_kkde23_re_3"
+        );
     }
 }

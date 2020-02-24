@@ -19,6 +19,7 @@
 package bio.overture.rollcall.model;
 
 import lombok.Data;
+import lombok.NonNull;
 
 @Data
 public class CreateResolvableIndexRequest {
@@ -29,13 +30,22 @@ public class CreateResolvableIndexRequest {
     private final String shard;
     private final String releasePrefix;
     private final Boolean clone;
+    private final String indexSetting;
 
-    public CreateResolvableIndexRequest(String entity, String type, String shardPrefix, String shard, String releasePrefix, Boolean clone) {
-        this.entity = entity.toLowerCase().trim();
-        this.type = type.toLowerCase().trim();
-        this.shardPrefix = shardPrefix.toLowerCase().trim();
-        this.shard = shard.toLowerCase().trim();
-        this.releasePrefix = releasePrefix == null ? "re" : releasePrefix.toLowerCase().trim();
+    public CreateResolvableIndexRequest(
+            @NonNull String entity,
+            @NonNull String type,
+            @NonNull String shardPrefix,
+            @NonNull String shard,
+            String releasePrefix,
+            Boolean clone,
+            String indexSetting) {
+        this.entity = entity;
+        this.type = type;
+        this.shardPrefix = shardPrefix;
+        this.shard = shard;
+        this.releasePrefix = releasePrefix == null ? "re" : releasePrefix;
         this.clone = clone == null ? false : clone;
+        this.indexSetting = indexSetting == null ? "{}" : indexSetting;
     }
 }
