@@ -23,12 +23,14 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -76,7 +78,14 @@ public class IndexRepository {
   }
 
   @SneakyThrows
-  public boolean addAlias(@NonNull String alias, @NonNull List<String> indices) {
+  public boolean makeReadonlyThenAddAlias(@NonNull String alias, @NonNull List<String> indices) {
+    // make indices readonly
+    final String disableWriteSetting = "{ \"index.blocks.write\": true }";
+    val updateSettingsReq = new UpdateSettingsRequest(indices.toArray(String[]::new)).settings(disableWriteSetting, XContentType.JSON);
+    val updatedSettings = client.indices().putSettings(updateSettingsReq, RequestOptions.DEFAULT).isAcknowledged();
+
+    if (!updatedSettings) return false;
+
     val req = new IndicesAliasesRequest();
     indices.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
     return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
