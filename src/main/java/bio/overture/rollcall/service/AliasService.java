@@ -139,7 +139,7 @@ public class AliasService {
 
     val indices = getIndicesForRelease(candidates, release, shards);
 
-    return repository.addAlias(aliasRequest.getAlias(), indices);
+    return repository.makeReadonlyThenAddAlias(aliasRequest.getAlias(), indices);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {

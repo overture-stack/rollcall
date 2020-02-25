@@ -22,11 +22,15 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.apache.http.HttpHost;
 import org.assertj.core.util.Lists;
+import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.junit.*;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
@@ -35,7 +39,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 public class IndexRepositoryTest {
 
@@ -88,7 +92,7 @@ public class IndexRepositoryTest {
   public void releaseAndRemoveTest() {
     val list = Lists.list(INDEX1,INDEX2,INDEX3);
 
-    val added = repository.addAlias("file_centric", list);
+    val added = repository.makeReadonlyThenAddAlias("file_centric", list);
 
     assertThat(added).isTrue();
 
@@ -104,4 +108,28 @@ public class IndexRepositoryTest {
     repository.getAliasState().valuesIt().forEachRemaining(i -> assertThat(i).isEmpty());
   }
 
+  @Test
+  @SneakyThrows
+  public void readonlyAfterRelease() {
+    val indices = Lists.list(INDEX1,INDEX2,INDEX3);
+
+    val added = repository.makeReadonlyThenAddAlias("file_centric", indices);
+    assertThat(added).isTrue();
+
+    // check indices are now readonly
+    val res = client.indices().getSettings(new GetSettingsRequest().indices(indices.toArray(String[]::new)), RequestOptions.DEFAULT);
+    indices.forEach(i ->
+            assertThat(res.getSetting(i, "index.blocks.write")).isEqualTo("true"));
+
+    val thrownExceptionOnWriteToReadonly = catchThrowable(() ->
+            client.index(new IndexRequest(INDEX1).id("1")
+                    .source("{ \"testKey\": \"testVal\" }", XContentType.JSON), RequestOptions.DEFAULT)
+    );
+
+    assertThat(thrownExceptionOnWriteToReadonly)
+            .isInstanceOf(ElasticsearchStatusException.class)
+            .hasMessageContaining("blocked by")
+            .hasMessageContaining("FORBIDDEN")
+            .hasMessageContaining("index write");
+  }
 }
