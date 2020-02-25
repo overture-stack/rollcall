@@ -54,9 +54,14 @@ public class IndexRepository {
 
   @SneakyThrows
   public String[] getIndices() {
+    return getIndices("*");
+  }
+
+  @SneakyThrows
+  public String[] getIndices(String... indexName) {
     return client.indices()
-      .get(new GetIndexRequest("*").indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT)
-      .getIndices();
+            .get(new GetIndexRequest(indexName).indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT)
+            .getIndices();
   }
 
   @SneakyThrows

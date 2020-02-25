@@ -29,7 +29,7 @@ public class CreateResolvableIndexRequest {
     private final String shardPrefix;
     private final String shard;
     private final String releasePrefix;
-    private final Boolean clone;
+    private final Boolean cloneFromReleasedIndex;
     private final String indexSetting;
 
     public CreateResolvableIndexRequest(
@@ -38,14 +38,14 @@ public class CreateResolvableIndexRequest {
             @NonNull String shardPrefix,
             @NonNull String shard,
             String releasePrefix,
-            Boolean clone,
+            Boolean cloneFromReleasedIndex,
             String indexSetting) {
         this.entity = entity;
         this.type = type;
         this.shardPrefix = shardPrefix;
         this.shard = shard;
         this.releasePrefix = releasePrefix == null ? "re" : releasePrefix;
-        this.clone = clone == null ? false : clone;
+        this.cloneFromReleasedIndex = cloneFromReleasedIndex == null ? false : cloneFromReleasedIndex;
         this.indexSetting = indexSetting == null ? "{}" : indexSetting;
     }
 }

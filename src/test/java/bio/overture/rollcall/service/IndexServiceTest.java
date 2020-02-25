@@ -21,6 +21,7 @@ package bio.overture.rollcall.service;
 import bio.overture.rollcall.config.RollcallConfig;
 import bio.overture.rollcall.index.IndexParser;
 import bio.overture.rollcall.index.ResolvedIndex;
+import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.CreateResolvableIndexRequest;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.SneakyThrows;
@@ -28,7 +29,6 @@ import lombok.val;
 import org.apache.http.HttpHost;
 import org.assertj.core.util.Lists;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
@@ -141,16 +141,15 @@ public class IndexServiceTest {
     @Test
     @SneakyThrows
     public void testIndexCloneAndUpdatedRelease() {
-        // start with an index with one document and it's set to readonly
+        // start with an index with one document in it
         val originalIndexName = "file_centric_sd_kkde23_re_1";
         repository.createIndex(originalIndexName);
         client.index(new IndexRequest(originalIndexName).id("1").source("{ \"testKey\": \"testVal\" }", XContentType.JSON), RequestOptions.DEFAULT);
-        client.indices().putSettings(
-                new UpdateSettingsRequest(originalIndexName).settings("{ \"index.blocks.write\": true }", XContentType.JSON),
-                RequestOptions.DEFAULT
-        );
 
-        // create new index, this request is asking to clone existing index, so it should clone existing index and update release version
+        // release the existing index
+        aliasService.release(new AliasRequest("file_centric", "re_1", Lists.list("sd_kkde23")));
+
+        // create new index, this request is asking to clone, so it should clone existing released index and update release value
         val req1 = new CreateResolvableIndexRequest("file", "centric", "sd" , "kkde23", "re", true, null);
         val newIndexName = service.createResolvableIndex(req1).getIndexName();
         assertThat(newIndexName).isEqualTo("file_centric_sd_kkde23_re_2");

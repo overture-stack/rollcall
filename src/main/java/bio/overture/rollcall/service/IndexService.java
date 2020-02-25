@@ -28,10 +28,7 @@ import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,7 +47,7 @@ public class IndexService {
     public List<ResolvedIndex> getResolved() {  return aliasService.getResolved();  }
 
     public ResolvedIndex createResolvableIndex(@NonNull CreateResolvableIndexRequest createResolvableIndexRequest) {
-        val clone = createResolvableIndexRequest.getClone();
+        val cloneFromReleasedIndex = createResolvableIndexRequest.getCloneFromReleasedIndex();
         val newIndexSettings = createResolvableIndexRequest.getIndexSetting();
 
         // parse request into a dummyResolvedIndex to make sure the parameters are valid, release version is irrelevant here
@@ -62,25 +59,38 @@ public class IndexService {
         // find resolved index with latest release value in existing resolved indices
         val latestResolvedIndex = existingResolvedIndices.stream().max(ResolvedIndexByReleaseComparator);
 
-        // get release value for new index to be created
+        // create new resolved index, with new release value
         val newReleaseValue = calculateNewReleaseValue(latestResolvedIndex);
-
-        // generate resolved index object, with new release value to make sure it is still valid
         val newResolvedIndex = generateResolvedIndex(createResolvableIndexRequest, newReleaseValue);
-
         val newIndexName = newResolvedIndex.getIndexName();
 
-        // clone if requested and possible to do so, otherwise create
-        if (latestResolvedIndex.isPresent() && clone) {
-            val latestResolvedIndexName = latestResolvedIndex.get().getIndexName();
-            log.info("Index to clone: " + latestResolvedIndexName);
-            repository.cloneIndex(latestResolvedIndexName, newIndexName, newIndexSettings);
+        // indexToClone is the published/released index, not the latestResolvedIndex
+        val releasedIndexToClone = findReleasedIndexLikeResolvedIndex(newResolvedIndex);
+
+        if (releasedIndexToClone.isPresent() && cloneFromReleasedIndex) {
+            val indexNameToClone = releasedIndexToClone.get().getIndexName();
+            log.info("Index to clone: " + indexNameToClone);
+            repository.cloneIndex(indexNameToClone, newIndexName, newIndexSettings);
         } else {
             repository.createIndex(newIndexName, newIndexSettings);
         }
 
         log.info("New cloned/created index name: " + newIndexName);
         return newResolvedIndex;
+    }
+
+    private Optional<ResolvedIndex> findReleasedIndexLikeResolvedIndex(ResolvedIndex resolvedIndexToCompareWith) {
+        val alias = resolvedIndexToCompareWith.getEntity() + '_' + resolvedIndexToCompareWith.getType();
+        val shard = resolvedIndexToCompareWith.getShard();
+        val shardPrefix = resolvedIndexToCompareWith.getShardPrefix();
+        val releasePrefix = resolvedIndexToCompareWith.getReleasePrefix();
+
+        val relevantIndecies = repository.getIndices(alias);
+
+        return Arrays.stream(relevantIndecies)
+                .map(IndexParser::parse)
+                .filter(i -> i.getShard().equals(shard) && i.getShardPrefix().equals(shardPrefix) && i.getReleasePrefix().equals(releasePrefix))
+                .findFirst();
     }
 
     private List<ResolvedIndex> getRelevantResolvedIndices(ResolvedIndex testResolvableIndex) {

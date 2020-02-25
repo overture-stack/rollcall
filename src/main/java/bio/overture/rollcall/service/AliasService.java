@@ -24,10 +24,10 @@ import bio.overture.rollcall.exception.NoSuchAliasWithCandidatesException;
 import bio.overture.rollcall.exception.ReleaseIntegrityException;
 import bio.overture.rollcall.index.IndexParser;
 import bio.overture.rollcall.index.ResolvedIndex;
-import bio.overture.rollcall.model.AliasCandidates;
 import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.Shard;
 import bio.overture.rollcall.repository.IndexRepository;
+import lombok.Data;
 import lombok.NonNull;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,7 +79,7 @@ public class AliasService {
             .stream()
             .filter(c -> c.getAlias().getAlias().equals(alias))
             .findFirst();
-    if (!candidatesOpt.isPresent()) {
+    if (candidatesOpt.isEmpty()) {
       throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
     }
     return candidatesOpt.get();
@@ -109,16 +109,11 @@ public class AliasService {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
-    val candidates = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias))
-      .findFirst();
-    if (!candidates.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
+    val candidates = getRelevantCandidates(alias);
 
     // TODO: UNIT TEST
     val existing = getIndicesWithAlias(alias);
-    val indices = candidates.get().getIndices().stream()
+    val indices = candidates.getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
       .filter(i -> existing.contains(i.getIndexName()))
@@ -176,6 +171,12 @@ public class AliasService {
       .filter(i -> i.getReleasePrefix().equals(release[0]) && i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
+  }
+
+  @Data
+  public class AliasCandidates {
+    private final ConfiguredAlias alias;
+    private final List<ResolvedIndex> indices;
   }
 
 }
