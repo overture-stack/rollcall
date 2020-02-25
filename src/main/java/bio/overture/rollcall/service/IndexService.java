@@ -50,7 +50,7 @@ public class IndexService {
         val cloneFromReleasedIndex = createResolvableIndexRequest.getCloneFromReleasedIndex();
         val newIndexSettings = createResolvableIndexRequest.getIndexSetting();
 
-        // parse request into a dummyResolvedIndex to make sure the parameters are valid, release version is irrelevant here
+        // parse request into a dummyResolvedIndex to make sure the parameters are valid, release version is irrelevant
         val dummyResolvedIndex = generateResolvedIndex(createResolvableIndexRequest, 1);
 
         // get existing resolved indices with the same alias and shard values
@@ -60,7 +60,7 @@ public class IndexService {
         val latestResolvedIndex = existingResolvedIndices.stream().max(ResolvedIndexByReleaseComparator);
 
         // create new resolved index, with new release value
-        val newReleaseValue = calculateNewReleaseValue(latestResolvedIndex);
+        val newReleaseValue = latestResolvedIndex.isEmpty() ? 1 : calculateNewReleaseValue(latestResolvedIndex.get());
         val newResolvedIndex = generateResolvedIndex(createResolvableIndexRequest, newReleaseValue);
         val newIndexName = newResolvedIndex.getIndexName();
 
@@ -104,12 +104,8 @@ public class IndexService {
                 .collect(Collectors.toList());
     }
 
-    private int calculateNewReleaseValue(Optional<ResolvedIndex> indexToRef) {
-        if (indexToRef.isEmpty()) {
-            return 1;
-        }
-
-        int[] currReleaseIntParts = getReleaseIntegerParts(indexToRef.get().getRelease());
+    private int calculateNewReleaseValue(ResolvedIndex indexToRef) {
+        int[] currReleaseIntParts = getReleaseIntegerParts(indexToRef.getRelease());
         int newRelease;
         try {
             newRelease = currReleaseIntParts[0];
@@ -141,7 +137,7 @@ public class IndexService {
         val firstIndexReleaseIntParts = getReleaseIntegerParts(firstResolvedIndex.getRelease());
         val secondIndexReleaseIntParts = getReleaseIntegerParts(secondResolvedIndex.getRelease());
 
-        // first consider major releases with no additional numbers
+        // first consider major int part only
         if (firstIndexReleaseIntParts.length == 1 && firstIndexReleaseIntParts[0] >= secondIndexReleaseIntParts[0]) {
             return 1;
         } else if (secondIndexReleaseIntParts.length == 1  && firstIndexReleaseIntParts[0] <= secondIndexReleaseIntParts[0]) {
@@ -151,19 +147,13 @@ public class IndexService {
         // next compare the integer values of both indices, going through each pair until finding a pair that are not equal
         int i = 1;
         while (i < firstIndexReleaseIntParts.length && i < secondIndexReleaseIntParts.length) {
-            int firstIndexReleaseIntPart = firstIndexReleaseIntParts[i];
-            int secondIndexReleaseIntPart = secondIndexReleaseIntParts[i];
-
-            if (firstIndexReleaseIntPart > secondIndexReleaseIntPart)
+            if (firstIndexReleaseIntParts[i] > secondIndexReleaseIntParts[i])
                 return 1;
-            else if (firstIndexReleaseIntPart < secondIndexReleaseIntPart)
+            else if (firstIndexReleaseIntParts[i] < secondIndexReleaseIntParts[i])
                 return -1;
-
-            // both are equal, so keep looking
-            i++;
+            i++; // both are equal, so keep looking
         }
 
-        // found no difference, both have same release integer pairs
-        return 0;
+        return 0; // found no difference, both have same release integer pairs
     };
 }
