@@ -74,16 +74,22 @@ public class AliasService {
     .collect(toList());
   }
 
+  public AliasCandidates getRelevantCandidates(String alias) {
+    val candidatesOpt = this.getCandidates()
+            .stream()
+            .filter(c -> c.getAlias().getAlias().equals(alias))
+            .findFirst();
+    if (candidatesOpt.isEmpty()) {
+      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
+    }
+    return candidatesOpt.get();
+  }
+
   public boolean release(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
 
     // First identify candidates and check existence of at least one.
-    val candidatesOpt = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
-    if (!candidatesOpt.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
-    val candidates = candidatesOpt.get();
+    val candidates = this.getRelevantCandidates(alias);
 
     // Now do a pre-flight check to see if target indices exist and resolve correctly before continuing.
     val indicesToRelease = getIndicesForRelease(candidates, aliasRequest.getRelease().toLowerCase().split("_"), getShardsFromRequest(aliasRequest));
@@ -103,16 +109,11 @@ public class AliasService {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
-    val candidates = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias))
-      .findFirst();
-    if (!candidates.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
+    val candidates = getRelevantCandidates(alias);
 
     // TODO: UNIT TEST
     val existing = getIndicesWithAlias(alias);
-    val indices = candidates.get().getIndices().stream()
+    val indices = candidates.getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
       .filter(i -> existing.contains(i.getIndexName()))
