@@ -79,6 +79,8 @@ public class IndexService {
         return newResolvedIndex;
     }
 
+    // This function is used to find a released index which has the same enity & type (which put together is the alias)
+    // as well as the same shardName, shardPrefix and releasePrefix as the resolvedIndex to be created
     private Optional<ResolvedIndex> findReleasedIndexLikeResolvedIndex(ResolvedIndex resolvedIndexToCompareWith) {
         val alias = resolvedIndexToCompareWith.getEntity() + '_' + resolvedIndexToCompareWith.getType();
         val shard = resolvedIndexToCompareWith.getShard();
