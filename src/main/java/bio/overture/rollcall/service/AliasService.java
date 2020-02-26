@@ -28,6 +28,7 @@ import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.model.Shard;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.Data;
+import lombok.NonNull;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class AliasService {
   private final IndexRepository repository;
 
   @Autowired
-  public AliasService(RollcallConfig aliasConfig, IndexRepository repository) {
+  public AliasService(@NonNull RollcallConfig aliasConfig, @NonNull IndexRepository repository) {
     this.aliasConfig = aliasConfig;
     this.repository = repository;
   }
@@ -73,16 +74,22 @@ public class AliasService {
     .collect(toList());
   }
 
-  public boolean release(AliasRequest aliasRequest) {
+  public AliasCandidates getRelevantCandidates(String alias) {
+    val candidatesOpt = this.getCandidates()
+            .stream()
+            .filter(c -> c.getAlias().getAlias().equals(alias))
+            .findFirst();
+    if (candidatesOpt.isEmpty()) {
+      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
+    }
+    return candidatesOpt.get();
+  }
+
+  public boolean release(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
 
     // First identify candidates and check existence of at least one.
-    val candidatesOpt = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias)).findFirst();
-    if (!candidatesOpt.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
-    val candidates = candidatesOpt.get();
+    val candidates = this.getRelevantCandidates(alias);
 
     // Now do a pre-flight check to see if target indices exist and resolve correctly before continuing.
     val indicesToRelease = getIndicesForRelease(candidates, aliasRequest.getRelease().toLowerCase().split("_"), getShardsFromRequest(aliasRequest));
@@ -98,20 +105,15 @@ public class AliasService {
     return addAliasToIndices(aliasRequest, candidates);
   }
 
-  public boolean remove(AliasRequest aliasRequest) {
+  public boolean remove(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
-    val candidates = this.getCandidates().stream()
-      .filter(c -> c.getAlias().getAlias().equals(alias))
-      .findFirst();
-    if (!candidates.isPresent()) {
-      throw new NoSuchAliasWithCandidatesException("No such alias with index candidates");
-    }
+    val candidates = getRelevantCandidates(alias);
 
     // TODO: UNIT TEST
     val existing = getIndicesWithAlias(alias);
-    val indices = candidates.get().getIndices().stream()
+    val indices = candidates.getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
       .filter(i -> existing.contains(i.getIndexName()))
@@ -121,7 +123,7 @@ public class AliasService {
     return repository.removeAlias(alias, indices);
   }
 
-  public boolean removeAliasFromAllIndices(String alias) {
+  public boolean removeAliasFromAllIndices(@NonNull String alias) {
     List<String> existing = getIndicesWithAlias(alias);
     return repository.removeAlias(alias, existing);
   }
@@ -132,7 +134,7 @@ public class AliasService {
 
     val indices = getIndicesForRelease(candidates, release, shards);
 
-    return repository.addAlias(aliasRequest.getAlias(), indices);
+    return repository.makeReadonlyThenAddAlias(aliasRequest.getAlias(), indices);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {

@@ -24,12 +24,13 @@ import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.repository.IndexRepository;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.apache.http.HttpHost;
 import org.assertj.core.util.Lists;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.TransportAddress;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -47,7 +48,7 @@ public class AliasServiceTest {
 
   @ClassRule
   public static GenericContainer esContainer =
-    new FixedHostPortGenericContainer("docker.elastic.co/elasticsearch/elasticsearch:6.3.2")
+    new FixedHostPortGenericContainer("docker.elastic.co/elasticsearch/elasticsearch:7.5.2")
       .withFixedExposedPort(10200, 9200)
       .withFixedExposedPort(10300, 9300)
       .waitingFor(Wait.forHttp("/")) // Wait until elastic start
@@ -57,33 +58,32 @@ public class AliasServiceTest {
   private static String INDEX2 = "file_centric_sd_preasa7s_re_foobar1";
   private static String INDEX3 = "file_centric_sd_preasa7s_re_foobar2";
 
-  private TransportClient client;
+  private RestHighLevelClient client;
   private IndexRepository repository;
   private AliasService service;
 
   @Before
   @SneakyThrows
   public void setUp() {
-    client = new PreBuiltTransportClient(Settings.builder().put("cluster.name", "docker-cluster").build())
-      .addTransportAddress(new TransportAddress(InetAddress.getByName(esContainer.getIpAddress()), 10300));
+    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
     repository = new IndexRepository(client);
 
     val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric")));
     service = new AliasService(config, repository);
 
-    client.admin().indices().prepareCreate(INDEX1).get();
-    client.admin().indices().prepareCreate(INDEX2).get();
-    client.admin().indices().prepareCreate(INDEX3).get();
-    client.admin().indices().prepareCreate("badindex").get();
+    client.indices().create(new CreateIndexRequest(INDEX1), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEX2), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEX3), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest("badindex"), RequestOptions.DEFAULT);
   }
 
   @After
   @SneakyThrows
   public void tearDown() {
-    client.admin().indices().delete(new DeleteIndexRequest(INDEX1)).get();
-    client.admin().indices().delete(new DeleteIndexRequest(INDEX2)).get();
-    client.admin().indices().delete(new DeleteIndexRequest(INDEX3)).get();
-    client.admin().indices().delete(new DeleteIndexRequest("badindex")).get();
+    client.indices().delete(new DeleteIndexRequest(INDEX1), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest(INDEX2), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest(INDEX3), RequestOptions.DEFAULT);
+    client.indices().delete(new DeleteIndexRequest("badindex"), RequestOptions.DEFAULT);
   }
 
   @Test

@@ -22,6 +22,7 @@ import bio.overture.rollcall.index.ResolvedIndex.Part;
 import bio.overture.rollcall.antlr4.IndexNameBaseVisitor;
 import bio.overture.rollcall.antlr4.IndexNameParser.*;
 import bio.overture.rollcall.antlr4.IndexNameParser.IndexNameContext;
+import lombok.NonNull;
 import lombok.val;
 
 import java.util.Objects;
@@ -31,7 +32,7 @@ import static java.util.stream.Collectors.toList;
 public class IndexNameVisitor extends IndexNameBaseVisitor<IndexNamePart> {
 
   @Override
-  public IndexNamePart visitIndexName(IndexNameContext ctx) {
+  public IndexNamePart visitIndexName(@NonNull IndexNameContext ctx) {
     val result = ctx.children.stream()
       .map(child -> child.accept(this))
       .filter(Objects::nonNull)
@@ -41,27 +42,27 @@ public class IndexNameVisitor extends IndexNameBaseVisitor<IndexNamePart> {
   }
 
   @Override
-  public IndexNamePart visitEntity(EntityContext ctx) {
+  public IndexNamePart visitEntity(@NonNull EntityContext ctx) {
     return new IndexNamePart(Part.ENTITY, ctx.getChild(0).getText());
   }
 
-  @Override public IndexNamePart visitPart(PartContext ctx) {
+  @Override public IndexNamePart visitPart(@NonNull PartContext ctx) {
     return new IndexNamePart(Part.TYPE, ctx.getChild(0).getText());
   }
 
-  @Override public IndexNamePart visitShardPrefix(ShardPrefixContext ctx) {
+  @Override public IndexNamePart visitShardPrefix(@NonNull ShardPrefixContext ctx) {
     return new IndexNamePart(Part.SHARD_PREFIX, ctx.getChild(0).getText());
   }
 
-  @Override public IndexNamePart visitShard(ShardContext ctx) {
+  @Override public IndexNamePart visitShard(@NonNull ShardContext ctx) {
     return new IndexNamePart(Part.SHARD, ctx.getChild(0).getText());
   }
 
-  @Override public IndexNamePart visitReleasePrefix(ReleasePrefixContext ctx) {
+  @Override public IndexNamePart visitReleasePrefix(@NonNull ReleasePrefixContext ctx) {
     return new IndexNamePart(Part.RELEASE_PREFIX, ctx.getChild(0).getText());
   }
 
-  @Override public IndexNamePart visitRelease(ReleaseContext ctx) {
+  @Override public IndexNamePart visitRelease(@NonNull ReleaseContext ctx) {
     return new IndexNamePart(Part.RELEASE, ctx.getChild(0).getText());
   }
 

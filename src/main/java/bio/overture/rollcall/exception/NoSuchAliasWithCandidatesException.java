@@ -19,13 +19,14 @@
 package bio.overture.rollcall.exception;
 
 
+import lombok.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(value= HttpStatus.NOT_FOUND)
 public class NoSuchAliasWithCandidatesException extends RuntimeException {
 
-  public NoSuchAliasWithCandidatesException(String message) {
+  public NoSuchAliasWithCandidatesException(@NonNull String message) {
     super(message);
   }
 

@@ -1,36 +1,32 @@
-FROM openjdk:8u121-jdk-alpine
+FROM adoptopenjdk/openjdk11:jdk-11.0.6_10-alpine-slim as builder
 
-ARG MAVEN_VERSION=3.5.4
-ARG SHA=ce50b1c91364cb77efe3776f756a6d92b76d9038b0a0782f7d53acf1e997a14d
-ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/${MAVEN_VERSION}/binaries
-
-RUN apk add --no-cache curl tar bash \
-  && mkdir -p /usr/share/maven /usr/share/maven/ref \
-  && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
-  && echo "${SHA}  /tmp/apache-maven.tar.gz" | sha256sum -c - \
-  && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 \
-  && rm -f /tmp/apache-maven.tar.gz \
-  && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
-
-WORKDIR /usr/src/app
-
-# copy just the pom.xml and install dependencies for caching
-COPY pom.xml .
-RUN mvn verify clean --fail-never
+# Build song-server jar
+COPY . /srv
+WORKDIR /srv
+RUN ./mvnw clean package -DskipTests
 
 
-COPY . .
+FROM adoptopenjdk/openjdk11:jre-11.0.6_10-alpine as server
+# Paths
+ENV APP_HOME /srv/rollcall
+ENV APP_LOGS $APP_HOME/logs
+ENV JAR_FILE            /srv/rollcall/rollcall.jar
 
-RUN mkdir -p /srv/rollcall/install \
-    && mkdir -p /srv/rollcall/exec \
-    && mvn package -Dmaven.test.skip=true \
-    && mv /usr/src/app/target/rollcall-*-SNAPSHOT.jar /srv/rollcall/install/ROLLCALL.jar \
-    && mv /usr/src/app/src/main/resources/scripts/run.sh /srv/rollcall/exec/run.sh
+COPY --from=builder /srv/target/rollcall-*.jar $JAR_FILE
 
-# setup required environment variables
-ENV ROLLCALL_INSTALL_PATH /srv/rollcall
+ENV APP_USER rollcall
+ENV APP_UID 9999
+ENV APP_GID 9999
 
-# start ego server
-WORKDIR $ROLLCALL_INSTALL_PATH
-CMD $ROLLCALL_INSTALL_PATH/exec/run.sh
+RUN addgroup -S -g $APP_GID $APP_USER  \
+    && adduser -S -u $APP_UID -G $APP_USER  $APP_USER \
+    && mkdir -p $APP_HOME $APP_LOGS \
+    && chown -R $APP_UID:$APP_GID $APP_HOME
 
+USER $APP_UID
+
+WORKDIR $APP_HOME
+
+CMD java -Dlog.path=$APP_LOGS \
+        -jar $JAR_FILE \
+        --spring.config.location=classpath:/application.yml

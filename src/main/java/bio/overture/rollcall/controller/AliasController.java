@@ -21,6 +21,7 @@ package bio.overture.rollcall.controller;
 import bio.overture.rollcall.config.RollcallConfig.ConfiguredAlias;
 import bio.overture.rollcall.model.AliasRequest;
 import bio.overture.rollcall.service.AliasService;
+import lombok.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public class AliasController {
 
   private final AliasService service;
 
-  public AliasController(AliasService service) {
+  public AliasController(@NonNull AliasService service) {
     this.service = service;
   }
 
