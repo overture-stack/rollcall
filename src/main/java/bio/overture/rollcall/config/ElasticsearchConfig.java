@@ -19,7 +19,11 @@
 package bio.overture.rollcall.config;
 
 import lombok.SneakyThrows;
+import lombok.val;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,14 +41,27 @@ public class ElasticsearchConfig {
   @Value("${elasticsearch.port}")
   private int port;
 
+  @Value("${elasticsearch.authEnabled}")
+  private boolean authEnabled;
+
+  @Value("${elasticsearch.user}")
+  private String user;
+
+  @Value("${elasticsearch.password}")
+  private String password;
 
   @Bean
   @SneakyThrows
   public RestHighLevelClient restClient() {
-    return new RestHighLevelClient(
-      RestClient.builder(
-        new HttpHost(new URL(host).getHost(), port)
-      )
-    );
+      val builder = RestClient.builder(new HttpHost(new URL(host).getHost(), port));
+      if (authEnabled) {
+          builder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
+              val credentialsProvider = new BasicCredentialsProvider();
+              credentialsProvider.setCredentials(AuthScope.ANY,
+                      new UsernamePasswordCredentials(user, password));
+              return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+          });
+      }
+      return new RestHighLevelClient(builder);
   }
 }

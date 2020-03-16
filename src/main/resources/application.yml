@@ -9,6 +9,9 @@ elasticsearch:
   host: http://127.0.0.1
   port: 9200
   cluster-name: elasticsearch
+  authEnabled: false
+  user:
+  password:
 
 rollcall:
   aliases:

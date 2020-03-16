@@ -29,4 +29,4 @@ WORKDIR $APP_HOME
 
 CMD java -Dlog.path=$APP_LOGS \
         -jar $JAR_FILE \
-        --spring.config.location=classpath:/application.yml
+        --spring.config.location=classpath:/bootstrap.properties,classpath:/application.yml
