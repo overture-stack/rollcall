@@ -30,8 +30,7 @@ services:
      ports:
        - "9001:9001"
      environment:
-       ELASTICSEARCH_HOST: http://elasticsearch
-       ELASTICSEARCH_PORT: 9200
+       ELASTICSEARCH_NODE: http://elasticsearch:9200
        ELASTICSEARCH_AUTHENABLED: "true"
        SPRING_PROFILES_ACTIVE: test
        SPRING_CLOUD_VAULT_HOST: vault
