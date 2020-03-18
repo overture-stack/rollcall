@@ -47,7 +47,7 @@ public class ElasticsearchConfig {
   @Value("${elasticsearch.authEnabled:false}")
   private boolean authEnabled;
 
-  @Value("${elasticsearch.trustSelfSignedCert:true}")
+  @Value("${elasticsearch.trustSelfSignedCert:false}")
   private boolean trustSelfSignedCert;
 
   @Value("${elasticsearch.user}")
@@ -68,7 +68,6 @@ public class ElasticsearchConfig {
               try {
                   sslCtxBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
                   httpAsyncClientBuilder.setSSLContext(sslCtxBuilder.build());
-                  httpAsyncClientBuilder.setSSLHostnameVerifier((s, sslSession) -> true); // this is for local only
               } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
                   throw new RuntimeException("failed to build Elastic rest client");
               }
