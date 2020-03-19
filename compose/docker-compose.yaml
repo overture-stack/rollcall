@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+    environment:
+      discovery.type: 'single-node'
+      ELASTIC_PASSWORD: "elasticpass"
+      xpack.security.enabled: 'true'
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.5.2
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: "elastic"
+      ELASTICSEARCH_PASSWORD: "elasticpass"
+      xpack.security.enabled: 'true'
+    ports:
+      - "5601:5601"
+  rollcall:
+     depends_on:
+       - elasticsearch
+       - vault
+     build: ..
+     ports:
+       - "9001:9001"
+     environment:
+       ELASTICSEARCH_NODE: http://elasticsearch:9200
+       ELASTICSEARCH_AUTHENABLED: "true"
+       SPRING_PROFILES_ACTIVE: test
+       SPRING_CLOUD_VAULT_HOST: vault
+       SPRING_CLOUD_VAULT_PORT: 8200
+       SPRING_CLOUD_VAULT_SCHEME: http
+       SPRING_CLOUD_VAULT_TOKEN: "rootToken"
+       # spring-cloud backend note: 'kv' is 'kv_v2' in vault, use 'generic' for 'kv_v1' in vault
+       SPRING_CLOUD_VAULT_KV_BACKEND: secret
+       SPRING_CLOUD_VAULT_KV_DEFAULT-CONTEXT: dev/rollcall
+       SPRING_CLOUD_VAULT_KV_ENABLED: "true"
+  vault:
+    image: vault
+    volumes:
+      - ./vault:/scripts
+    cap_add:
+      - IPC_LOCK
+    command: /scripts/vault.sh
+    ports:
+      - 8200:8200
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: rootToken
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      ROLLCALL_VAULT_SECRET_LOCATION: "dev/rollcall"
+      ELASTICSEARCH_USER: elastic
+      ELASTICSEARCH_PASSWORD: elasticpass
+volumes:
+  es_data:
+    driver: local

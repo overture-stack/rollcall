@@ -19,32 +19,73 @@
 package bio.overture.rollcall.config;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 
 @Configuration
+@Slf4j
 public class ElasticsearchConfig {
 
-  @Value("${elasticsearch.host}")
-  private String host;
+  @Value("${elasticsearch.node}")
+  private String node;
 
-  @Value("${elasticsearch.port}")
-  private int port;
+  @Value("${elasticsearch.authEnabled:false}")
+  private boolean authEnabled;
 
+  @Value("${elasticsearch.trustSelfSignedCert:false}")
+  private boolean trustSelfSignedCert;
+
+  @Value("${elasticsearch.user}")
+  private String user;
+
+  @Value("${elasticsearch.password}")
+  private String password;
 
   @Bean
   @SneakyThrows
   public RestHighLevelClient restClient() {
-    return new RestHighLevelClient(
-      RestClient.builder(
-        new HttpHost(new URL(host).getHost(), port)
-      )
-    );
+      val builder = RestClient.builder(HttpHost.create(node));
+
+      builder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
+          if (trustSelfSignedCert) {
+              log.debug("Elasticsearch Client - trustSelfSignedCert enabled so setting SSLContext");
+              SSLContextBuilder sslCtxBuilder = new SSLContextBuilder();
+              try {
+                  sslCtxBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+                  httpAsyncClientBuilder.setSSLContext(sslCtxBuilder.build());
+              } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
+                  throw new RuntimeException("failed to build Elastic rest client");
+              }
+          }
+
+          if (authEnabled) {
+              log.debug("Elasticsearch Client - authEnabled enabled so setting credentials provider");
+              BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+              credentialsProvider.setCredentials(AuthScope.ANY,
+                      new UsernamePasswordCredentials(user, password));
+              httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+          }
+
+          return httpAsyncClientBuilder;
+      });
+
+    log.info("Elasticsearch Client - built");
+
+    return new RestHighLevelClient(builder);
   }
 }

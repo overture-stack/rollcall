@@ -1,6 +1,5 @@
 FROM adoptopenjdk/openjdk11:jdk-11.0.6_10-alpine-slim as builder
 
-# Build song-server jar
 COPY . /srv
 WORKDIR /srv
 RUN ./mvnw clean package -DskipTests
@@ -29,4 +28,4 @@ WORKDIR $APP_HOME
 
 CMD java -Dlog.path=$APP_LOGS \
         -jar $JAR_FILE \
-        --spring.config.location=classpath:/application.yml
+        --spring.config.location=classpath:/bootstrap.properties,classpath:/application.yml
