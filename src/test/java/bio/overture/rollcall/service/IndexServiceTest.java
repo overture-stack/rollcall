@@ -48,7 +48,9 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class IndexServiceTest {
-    private static final String ALIAS_NAME = "file_centric";
+    private static final String ALIAS_NAME = "files";
+    private static final String ENTITY_VALUE = "file";
+    private static final String TYPE_VALUE = "centric";
     private static final String INDEX_NAME_WITH_NO_RELEASE = "file_centric_sd_kkde23_re_";
     private static final String EXISTING_INDEX_RELEASE_VALUE = "foobar1";
     private static final String EXISTING_INDEX = INDEX_NAME_WITH_NO_RELEASE + EXISTING_INDEX_RELEASE_VALUE;
@@ -69,12 +71,12 @@ public class IndexServiceTest {
     @Before
     @SneakyThrows
     public void setUp() {
-        client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
+        client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getContainerIpAddress()), 10200)));
         repository = new IndexRepository(client);
 
-        val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric")));
+        val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias(ALIAS_NAME, ENTITY_VALUE, TYPE_VALUE)));
         aliasService = new AliasService(config, repository);
-        service = new IndexService(repository, aliasService);
+        service = new IndexService(config, repository);
 
         repository.createIndex(EXISTING_INDEX);
     }
@@ -198,14 +200,13 @@ public class IndexServiceTest {
 
     private void releaseIndex(String indexName) {
         val indexNameParts = indexName.split("_");
-        val alias = indexNameParts[0] + "_" + indexNameParts[1];
         val shard = indexNameParts[2] + "_" + indexNameParts[3];
         val release = indexNameParts[4] + "_" + indexNameParts[5];
 
-        aliasService.release(new AliasRequest(alias, release, Lists.list(shard)));
+        aliasService.release(new AliasRequest(ALIAS_NAME, release, Lists.list(shard)));
     }
 
     private CreateResolvableIndexRequest makeNewCreateRequest(Boolean clonePreviousReleased) {
-        return new CreateResolvableIndexRequest("file", "centric", "sd", "kkde23", "re", clonePreviousReleased, null);
+        return new CreateResolvableIndexRequest(ENTITY_VALUE, TYPE_VALUE, "sd", "kkde23", "re", clonePreviousReleased, null);
     }
 }
