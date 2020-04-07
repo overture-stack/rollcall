@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018. The Ontario Institute for Cancer Research. All rights reserved.
+ * Copyright (c) 2020. The Ontario Institute for Cancer Research. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -44,10 +44,10 @@ public class ElasticsearchConfig {
   @Value("${elasticsearch.node}")
   private String node;
 
-  @Value("${elasticsearch.authEnabled:false}")
+  @Value("${elasticsearch.authEnabled}")
   private boolean authEnabled;
 
-  @Value("${elasticsearch.trustSelfSignedCert:false}")
+  @Value("${elasticsearch.trustSelfSignedCert}")
   private boolean trustSelfSignedCert;
 
   @Value("${elasticsearch.user}")
