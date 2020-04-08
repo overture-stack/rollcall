@@ -18,6 +18,7 @@
 
 package bio.overture.rollcall.service;
 
+import bio.overture.rollcall.config.RollcallConfig;
 import bio.overture.rollcall.index.IndexParser;
 import bio.overture.rollcall.index.ResolvedIndex;
 import bio.overture.rollcall.model.CreateResolvableIndexRequest;
@@ -29,22 +30,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toUnmodifiableList;
 
 @Service
 @Slf4j
 public class IndexService {
 
     private final IndexRepository repository;
-    private final AliasService aliasService;
+    private final RollcallConfig rollcallConfig;
 
     @Autowired
-    public IndexService(@NonNull IndexRepository repository, @NonNull AliasService aliasService) {
+    public IndexService(RollcallConfig rollcallConfig, @NonNull IndexRepository repository) {
         this.repository = repository;
-        this.aliasService = aliasService;
+        this.rollcallConfig = rollcallConfig;
     }
 
-    public List<ResolvedIndex> getResolved() {  return aliasService.getResolved();  }
+    public List<ResolvedIndex> getResolved() {
+        return Arrays.stream(repository.getIndices()).map(IndexParser::parse)
+                       .filter(ResolvedIndex::isValid)
+                       .collect(toUnmodifiableList());
+    }
 
     public ResolvedIndex createResolvableIndex(@NonNull CreateResolvableIndexRequest createResolvableIndexRequest) {
         val cloneFromReleasedIndex = createResolvableIndexRequest.getCloneFromReleasedIndex();
@@ -79,15 +85,18 @@ public class IndexService {
         return newResolvedIndex;
     }
 
-    // This function is used to find a released index which has the same enity & type (which put together is the alias)
+    // This function is used to find a released index which has the same enity & type (which is configured with an alias)
     // as well as the same shardName, shardPrefix and releasePrefix as the resolvedIndex to be created
     private Optional<ResolvedIndex> findReleasedIndexLikeResolvedIndex(ResolvedIndex resolvedIndexToCompareWith) {
-        val alias = resolvedIndexToCompareWith.getEntity() + '_' + resolvedIndexToCompareWith.getType();
+        val alias = getRelevantAlias(resolvedIndexToCompareWith.getEntity(), resolvedIndexToCompareWith.getType());
+        if (alias.isEmpty()) {
+            return Optional.empty();
+        }
         val shard = resolvedIndexToCompareWith.getShard();
         val shardPrefix = resolvedIndexToCompareWith.getShardPrefix();
         val releasePrefix = resolvedIndexToCompareWith.getReleasePrefix();
 
-        val relevantIndecies = repository.getIndices(alias);
+        val relevantIndecies = repository.getIndices(alias.get());
 
         return Arrays.stream(relevantIndecies)
                 .map(IndexParser::parse)
@@ -96,14 +105,25 @@ public class IndexService {
     }
 
     private List<ResolvedIndex> getRelevantResolvedIndices(ResolvedIndex testResolvableIndex) {
-        val alias = testResolvableIndex.getEntity() + '_' + testResolvableIndex.getType();
+        val type = testResolvableIndex.getType();
+        val entity = testResolvableIndex.getEntity();
         val shard = testResolvableIndex.getShard();
         val shardPrefix = testResolvableIndex.getShardPrefix();
-        return aliasService
-                .getRelevantCandidates(alias)
-                .getIndices().stream()
-                .filter(i -> i.getShard().equals(shard) && i.getShardPrefix().equals(shardPrefix))
-                .collect(Collectors.toList());
+
+        return getResolved().stream()
+                .filter(i -> i.getShard().equals(shard)
+                         && i.getShardPrefix().equals(shardPrefix)
+                         && i.getEntity().equals(entity)
+                         && i.getType().equals(type))
+                .collect(toUnmodifiableList());
+    }
+
+    private Optional<String> getRelevantAlias(String entity, String type) {
+        return rollcallConfig.getAliases()
+               .stream()
+               .filter(ca ->  ca.getEntity().equals(entity) && ca.getType().equals(type))
+               .map(RollcallConfig.ConfiguredAlias::getAlias)
+               .findFirst();
     }
 
     private int calculateNewReleaseValue(ResolvedIndex indexToRef) {
