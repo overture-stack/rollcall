@@ -92,7 +92,7 @@ public class IndexRepositoryTest {
   public void releaseAndRemoveTest() {
     val list = Lists.list(INDEX1,INDEX2,INDEX3);
 
-    val added = repository.makeReadonlyThenAddAlias("file_centric", list);
+    val added = repository.addAlias("file_centric", list);
 
     assertThat(added).isTrue();
 
@@ -110,10 +110,10 @@ public class IndexRepositoryTest {
 
   @Test
   @SneakyThrows
-  public void readonlyAfterRelease() {
+  public void makeReadonly() {
     val indices = Lists.list(INDEX1,INDEX2,INDEX3);
 
-    val added = repository.makeReadonlyThenAddAlias("file_centric", indices);
+    val added = repository.makeIndicesReadOnly(indices);
     assertThat(added).isTrue();
 
     // check indices are now readonly
