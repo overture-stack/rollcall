@@ -99,13 +99,13 @@ public class AliasService {
       throw new ReleaseIntegrityException(aliasRequest.getRelease(), aliasRequest.getShards(), indicesToRelease);
     }
 
-    val indicesToRemove = getIndicesToRemove(aliasRequest);
+    val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
 
     repository.makeIndicesReadOnly(indicesToRelease);
-    return repository.aliasActions(alias, indicesToRelease, indicesToRemove);
+    return repository.aliasActions(alias, indicesToRelease, indicesToRemoveFromAlias);
   }
 
-  public List<String> getIndicesToRemove(@NonNull AliasRequest aliasRequest) {
+  public List<String> getIndicesToRemoveFromAlias(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
@@ -125,8 +125,13 @@ public class AliasService {
 
   public boolean remove(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
-    val indices = getIndicesToRemove(aliasRequest);
+    val indices = getIndicesToRemoveFromAlias(aliasRequest);
     return repository.removeAlias(alias, indices);
+  }
+
+  public boolean removeAliasFromAllIndices(@NonNull String alias) {
+    List<String> existing = getIndicesWithAlias(alias);
+    return repository.removeAlias(alias, existing);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {

@@ -85,7 +85,6 @@ public class IndexRepository {
     return aliasActions(alias, indices, Collections.emptyList());
   }
 
-
   @SneakyThrows
   public boolean aliasActions(@NonNull String alias, @NonNull List<String> indicesToAddToAlias, @NonNull List<String> indicesToRemoveFromAlias) {
     val req = new IndicesAliasesRequest();
