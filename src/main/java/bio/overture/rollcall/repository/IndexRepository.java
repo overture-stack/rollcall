@@ -37,6 +37,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -76,27 +77,35 @@ public class IndexRepository {
 
   @SneakyThrows
   public boolean removeAlias(@NonNull String alias, @NonNull List<String> indices) {
+    return updateIndicesAliases(alias, Collections.emptyList(), indices);
+  }
+
+  @SneakyThrows
+  public boolean addAlias(@NonNull String alias, @NonNull List<String> indices) {
+    return updateIndicesAliases(alias, indices, Collections.emptyList());
+  }
+
+  @SneakyThrows
+  public boolean updateIndicesAliases(@NonNull String alias, @NonNull List<String> indicesToAddToAlias, @NonNull List<String> indicesToRemoveFromAlias) {
     val req = new IndicesAliasesRequest();
-    indices.forEach(i -> req.addAliasAction(remove().alias(alias).index(i)));
+
+    indicesToRemoveFromAlias.forEach(i -> req.addAliasAction(remove().alias(alias).index(i)));
+
+    indicesToAddToAlias.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
 
     if (req.getAliasActions().isEmpty()) {
       return true;
     }
+
     return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 
   @SneakyThrows
-  public boolean makeReadonlyThenAddAlias(@NonNull String alias, @NonNull List<String> indices) {
-    // make indices readonly
+  public boolean makeIndicesReadOnly(@NonNull List<String> indices) {
     final String disableWriteSetting = "{ \"index.blocks.write\": true }";
-    val updateSettingsReq = new UpdateSettingsRequest(indices.toArray(String[]::new)).settings(disableWriteSetting, XContentType.JSON);
-    val updatedSettings = client.indices().putSettings(updateSettingsReq, RequestOptions.DEFAULT).isAcknowledged();
-
-    if (!updatedSettings) return false;
-
-    val req = new IndicesAliasesRequest();
-    indices.forEach(i -> req.addAliasAction(add().alias(alias).index(i)));
-    return client.indices().updateAliases(req, RequestOptions.DEFAULT).isAcknowledged();
+    val updateSettingsReq = new UpdateSettingsRequest(indices.toArray(String[]::new))
+                                    .settings(disableWriteSetting, XContentType.JSON);
+    return client.indices().putSettings(updateSettingsReq, RequestOptions.DEFAULT).isAcknowledged();
   }
 
   @SneakyThrows

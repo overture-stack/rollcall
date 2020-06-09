@@ -87,25 +87,25 @@ public class AliasService {
 
   public boolean release(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
+    val releases = getReleasesFromRequest(aliasRequest);
+    val shards = getShardsFromRequest(aliasRequest);
 
     // First identify candidates and check existence of at least one.
-    val candidates = this.getRelevantCandidates(alias);
+    val candidates = getRelevantCandidates(alias);
 
     // Now do a pre-flight check to see if target indices exist and resolve correctly before continuing.
-    val indicesToRelease = getIndicesForRelease(candidates, aliasRequest.getRelease().toLowerCase().split("_"), getShardsFromRequest(aliasRequest));
+    val indicesToRelease = getIndicesForRelease(candidates, releases, shards);
     if (indicesToRelease.size() != aliasRequest.getShards().size()) {
       throw new ReleaseIntegrityException(aliasRequest.getRelease(), aliasRequest.getShards(), indicesToRelease);
     }
 
-    val removed = remove(aliasRequest);
-    if (!removed) {
-      throw new IllegalStateException("Failed to remove alias");
-    }
+    val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
 
-    return addAliasToIndices(aliasRequest, candidates);
+    repository.makeIndicesReadOnly(indicesToRelease);
+    return repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
   }
 
-  public boolean remove(@NonNull AliasRequest aliasRequest) {
+  public List<String> getIndicesToRemoveFromAlias(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
     val shards = getShardsFromRequest(aliasRequest);
 
@@ -120,6 +120,12 @@ public class AliasService {
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
 
+    return indices;
+  }
+
+  public boolean remove(@NonNull AliasRequest aliasRequest) {
+    val alias = aliasRequest.getAlias();
+    val indices = getIndicesToRemoveFromAlias(aliasRequest);
     return repository.removeAlias(alias, indices);
   }
 
@@ -128,21 +134,16 @@ public class AliasService {
     return repository.removeAlias(alias, existing);
   }
 
-  private boolean addAliasToIndices(AliasRequest aliasRequest, AliasCandidates candidates) {
-    val release = aliasRequest.getRelease().toLowerCase().split("_");
-    val shards = getShardsFromRequest(aliasRequest);
-
-    val indices = getIndicesForRelease(candidates, release, shards);
-
-    return repository.makeReadonlyThenAddAlias(aliasRequest.getAlias(), indices);
-  }
-
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {
     return aliasRequest.getShards().stream()
       .map(String::toLowerCase)
       .map(s -> s.split("_"))
       .map(s -> new Shard(s[0], s[1]))
       .collect(toList());
+  }
+
+  private static String[] getReleasesFromRequest(AliasRequest aliasRequest) {
+    return aliasRequest.getRelease().toLowerCase().split("_");
   }
 
   private List<String> getIndicesWithAlias(String alias) {
