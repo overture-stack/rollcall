@@ -102,7 +102,7 @@ public class AliasService {
     val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
 
     repository.makeIndicesReadOnly(indicesToRelease);
-    return repository.aliasActions(alias, indicesToRelease, indicesToRemoveFromAlias);
+    return repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
   }
 
   public List<String> getIndicesToRemoveFromAlias(@NonNull AliasRequest aliasRequest) {

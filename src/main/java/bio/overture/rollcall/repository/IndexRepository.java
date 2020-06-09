@@ -77,16 +77,16 @@ public class IndexRepository {
 
   @SneakyThrows
   public boolean removeAlias(@NonNull String alias, @NonNull List<String> indices) {
-    return aliasActions(alias, Collections.emptyList(), indices);
+    return updateIndicesAliases(alias, Collections.emptyList(), indices);
   }
 
   @SneakyThrows
   public boolean addAlias(@NonNull String alias, @NonNull List<String> indices) {
-    return aliasActions(alias, indices, Collections.emptyList());
+    return updateIndicesAliases(alias, indices, Collections.emptyList());
   }
 
   @SneakyThrows
-  public boolean aliasActions(@NonNull String alias, @NonNull List<String> indicesToAddToAlias, @NonNull List<String> indicesToRemoveFromAlias) {
+  public boolean updateIndicesAliases(@NonNull String alias, @NonNull List<String> indicesToAddToAlias, @NonNull List<String> indicesToRemoveFromAlias) {
     val req = new IndicesAliasesRequest();
 
     indicesToRemoveFromAlias.forEach(i -> req.addAliasAction(remove().alias(alias).index(i)));
