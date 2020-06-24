@@ -40,6 +40,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.net.InetAddress;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,7 +69,7 @@ public class AliasServiceTest {
     client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
     repository = new IndexRepository(client);
 
-    val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric")));
+    val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric", Optional.of(1))));
     service = new AliasService(config, repository);
 
     client.indices().create(new CreateIndexRequest(INDEX1), RequestOptions.DEFAULT);
@@ -80,10 +81,8 @@ public class AliasServiceTest {
   @After
   @SneakyThrows
   public void tearDown() {
-    client.indices().delete(new DeleteIndexRequest(INDEX1), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest(INDEX2), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest(INDEX3), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest("badindex"), RequestOptions.DEFAULT);
+    // delete all indices
+    client.indices().delete(new DeleteIndexRequest("*"), RequestOptions.DEFAULT);
   }
 
   @Test
@@ -125,4 +124,38 @@ public class AliasServiceTest {
     assertThat(state2.get(INDEX2).get(0).alias()).isEqualTo("file_centric");
   }
 
+  @Test
+  @SneakyThrows
+  public void testReleaseAndDeleteOldShards() {
+    // release foobar2
+    val request1 = new AliasRequest("file_centric", "RE_foobar2", Lists.list( "sd_preasa7s"));
+    service.release(request1);
+
+    // verify aliases assigned to indices
+    val state1 = repository.getAliasState();
+    assertThat(state1.get(INDEX1).isEmpty()).isTrue();
+    assertThat(state1.get(INDEX2).isEmpty()).isTrue();
+    assertThat(state1.get(INDEX3).get(0).alias()).isEqualTo("file_centric");
+
+    // add new index and assert current indices
+    final String INDEX4 = "file_centric_sd_preasa7s_re_foobar3";
+    client.indices().create(new CreateIndexRequest(INDEX4), RequestOptions.DEFAULT);
+    val indicesBeforeRelease = repository.getIndices();
+    assertThat(indicesBeforeRelease).containsExactlyInAnyOrder(INDEX1, INDEX2, INDEX3, "badindex", INDEX4);
+
+    // release foobar3
+    val request2 = new AliasRequest("file_centric", "RE_foobar3", Lists.list("SD_preasa7s"));
+    service.release(request2);
+
+    // verify aliases assigned to indices
+    val state2 = repository.getAliasState();
+    assertThat(state2.get(INDEX1).isEmpty()).isTrue();
+    assertThat(state2.get(INDEX2)).isNull(); // deleted old index, keeping latest 1 NonReleastedShard
+    assertThat(state2.get(INDEX3).isEmpty()).isTrue();
+    assertThat(state2.get(INDEX4).get(0).alias()).isEqualTo("file_centric");
+
+    // assert current indices
+    val indicesAfterRelease = repository.getIndices();
+    assertThat(indicesAfterRelease).containsExactlyInAnyOrder(INDEX1, INDEX3, "badindex", INDEX4);
+  }
 }

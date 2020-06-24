@@ -26,6 +26,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
+import java.util.Optional;
 
 @Configuration
 @ConfigurationProperties("rollcall")
@@ -54,6 +55,14 @@ public class RollcallConfig {
     private String alias;
     private String entity;
     private String type;
+    private Optional<Integer> latestNonreleasedShardsToKeepOnRelease;
+
+    public ConfiguredAlias(String alias, String entity, String type) {
+      this.alias = alias;
+      this.entity = entity;
+      this.type = type;
+      this.latestNonreleasedShardsToKeepOnRelease = Optional.empty();
+    }
   }
 
 }
