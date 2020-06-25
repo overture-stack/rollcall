@@ -90,7 +90,7 @@ public class AliasServiceTest {
   @Test
   public void getConfiguredTest() {
     val configured = service.getConfigured();
-    assertThat(configured).hasSize(1);
+    assertThat(configured).hasSize(2);
   }
 
   @Test
