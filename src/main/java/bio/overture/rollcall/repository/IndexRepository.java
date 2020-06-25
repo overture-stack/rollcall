@@ -40,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions.*;
@@ -145,35 +146,17 @@ public class IndexRepository {
   }
 
   @SneakyThrows
-  public ArrayList<IndexDets> getIndexDets(String... indices) {
+  public Map<String, Date> getIndexMappedToCreationDate(String... indices) {
     val response = client.indices().get(new GetIndexRequest(indices).indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT);
 
     val indicesSettings = response.getSettings();
 
-    ArrayList<IndexDets> dets = new ArrayList<>();
-
-
-    indicesSettings.forEach((k, v) -> dets.add(new IndexDets(
-                k,
-                new Date(v.getAsLong("index.creation_date", null))
-            )));
-
-    return dets;
-  }
-
-  @Data
-  public class IndexDets implements Comparable<IndexDets> {
-    private final String name;
-    private final Date createdOn;
-
-
-    public boolean isValid () {
-      return !(name == null || createdOn == null);
-    }
-
-    @Override
-    public int compareTo(IndexDets o) {
-      return getCreatedOn().compareTo(o.getCreatedOn());
-    }
+    return indicesSettings.entrySet().stream()
+            .collect(
+                    Collectors.toMap(
+                            Map.Entry::getKey, // key is index name
+                            e -> new Date(e.getValue().getAsLong("index.creation_date", null))
+                    )
+            );
   }
 }

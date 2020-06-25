@@ -60,45 +60,6 @@ public class AliasService {
       .collect(toList());
   }
 
-  public List<String> getIndicesToDelete(@NonNull AliasRequest aliasRequest, List<String> indicesToRelease, Optional<Integer> toKeepOp) {
-    if (toKeepOp.isEmpty() || toKeepOp.get() < 0) {
-      return Collections.emptyList();
-    }
-    val toKeep = toKeepOp.get();
-
-    val alias = aliasRequest.getAlias();
-    val shards = getShardsFromRequest(aliasRequest);
-
-    val candidates = getRelevantCandidates(alias);
-    val indices = candidates.getIndices().stream()
-                          .filter(i -> shards.stream().anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())));
-
-    System.out.println(toKeep);
-    System.out.println(indices);
-    System.out.println(indicesToRelease);
-
-    val indicesToConsider = indices
-                                     .filter(i -> !indicesToRelease.contains(i.getIndexName()))
-                                     .map(ResolvedIndex::getIndexName)
-                                     .collect(toUnmodifiableList());
-    System.out.println(indicesToConsider);
-
-    val sortedByDate = getIndicesSortedByCreationDate(indicesToConsider);
-    val deleteUpToIndex = sortedByDate.size() - toKeep;
-
-    val toDelete = sortedByDate.subList(0, Math.max(deleteUpToIndex, 0));
-
-    System.out.println(sortedByDate);
-    System.out.println(toDelete);
-
-    return toDelete;
-  }
-
-  public List<String> getIndicesSortedByCreationDate(List<String> indexNames) {
-    val dets = repository.getIndexDets(indexNames.toArray(String[]::new));
-    return dets.stream().sorted().map(IndexRepository.IndexDets::getName).collect(toUnmodifiableList());
-  }
-
   public List<AliasCandidates> getCandidates() {
     val resolved = this.getResolved();
     val configAliases = aliasConfig.getAliases();
@@ -139,12 +100,13 @@ public class AliasService {
 
     val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
 
-    val keepLatestIndexCount = candidates.getAlias().getLatestNonreleasedShardsToKeepOnRelease();
-    val indicesToDelete = getIndicesToDelete(aliasRequest, indicesToRelease, keepLatestIndexCount);
+    val indicesToDelete = getIndicesToDelete(candidates, shards, indicesToRelease);
 
-    repository.makeIndicesReadOnly(indicesToRelease);
-    repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
-    return repository.deleteIndices(indicesToDelete.toArray(String[]::new));
+    val successfullyMadeReadOnly = repository.makeIndicesReadOnly(indicesToRelease);
+    val successfullyUpdatedAliases = repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
+    val successfullyDeletedOldIndices = repository.deleteIndices(indicesToDelete.toArray(String[]::new));
+
+    return successfullyMadeReadOnly && successfullyUpdatedAliases && successfullyDeletedOldIndices;
   }
 
   public List<String> getIndicesToRemoveFromAlias(@NonNull AliasRequest aliasRequest) {
@@ -167,11 +129,6 @@ public class AliasService {
     val alias = aliasRequest.getAlias();
     val indices = getIndicesToRemoveFromAlias(aliasRequest);
     return repository.removeAlias(alias, indices);
-  }
-
-  public boolean removeAliasFromAllIndices(@NonNull String alias) {
-    List<String> existing = getIndicesWithAlias(alias);
-    return repository.removeAlias(alias, existing);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {
@@ -212,6 +169,32 @@ public class AliasService {
       .filter(i -> i.getReleasePrefix().equals(release[0]) && i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
+  }
+
+  private List<String> getIndicesToDelete(AliasCandidates candidates, List<Shard> shards, List<String> releaseIndicesToIgnore) {
+    val numOfRecentIndicesToKeep = candidates.getAlias().getNumOfRecentIndicesToKeepBesidesReleased();
+    if (numOfRecentIndicesToKeep < 0) {
+      return Collections.emptyList();
+    }
+
+    val relevantIndices = candidates.getIndices().stream()
+                          .filter(i -> shards.stream().anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
+                          .map(ResolvedIndex::getIndexName)
+                          .filter(i -> !releaseIndicesToIgnore.contains(i))
+                          .collect(toUnmodifiableList());
+
+    val sortedByDate = getIndicesSortedByCreationDate(relevantIndices);
+    val deleteUpToIndex = Math.max(sortedByDate.size() - numOfRecentIndicesToKeep, 0);
+
+    return sortedByDate.subList(0, deleteUpToIndex);
+  }
+
+  private List<String> getIndicesSortedByCreationDate(List<String> indexNames) {
+    val indexMappedToCreationDate = repository.getIndexMappedToCreationDate(indexNames.toArray(String[]::new));
+    return indexMappedToCreationDate.entrySet().stream()
+                   .sorted(Map.Entry.comparingByValue()) // sort by map value, which is date
+                   .map(Map.Entry::getKey)
+                   .collect(toList());
   }
 
   @Data
