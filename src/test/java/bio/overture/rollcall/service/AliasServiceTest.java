@@ -65,10 +65,13 @@ public class AliasServiceTest {
   @Before
   @SneakyThrows
   public void setUp() {
-    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
+    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getContainerIpAddress()), 10200)));
     repository = new IndexRepository(client);
 
-    val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric")));
+    val config = new RollcallConfig(Lists.list(
+            new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric", 1),
+            new RollcallConfig.ConfiguredAlias("participant_centric", "participant", "centric")
+    ));
     service = new AliasService(config, repository);
 
     client.indices().create(new CreateIndexRequest(INDEX1), RequestOptions.DEFAULT);
@@ -80,16 +83,14 @@ public class AliasServiceTest {
   @After
   @SneakyThrows
   public void tearDown() {
-    client.indices().delete(new DeleteIndexRequest(INDEX1), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest(INDEX2), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest(INDEX3), RequestOptions.DEFAULT);
-    client.indices().delete(new DeleteIndexRequest("badindex"), RequestOptions.DEFAULT);
+    // delete all indices
+    client.indices().delete(new DeleteIndexRequest("*"), RequestOptions.DEFAULT);
   }
 
   @Test
   public void getConfiguredTest() {
     val configured = service.getConfigured();
-    assertThat(configured).hasSize(1);
+    assertThat(configured).hasSize(2);
   }
 
   @Test
@@ -125,4 +126,59 @@ public class AliasServiceTest {
     assertThat(state2.get(INDEX2).get(0).alias()).isEqualTo("file_centric");
   }
 
+  @Test
+  @SneakyThrows
+  public void testReleaseAndDeleteOldIndices() {
+    // release foobar2
+    val request1 = new AliasRequest("file_centric", "RE_foobar2", Lists.list( "sd_preasa7s"));
+    service.release(request1);
+
+    // verify aliases assigned to indices
+    val state1 = repository.getAliasState();
+    assertThat(state1.get(INDEX2).isEmpty()).isTrue();
+    assertThat(state1.get(INDEX3).get(0).alias()).isEqualTo("file_centric");
+
+    // add new index and assert current indices
+    final String INDEX4 = "file_centric_sd_preasa7s_re_foobar3";
+    client.indices().create(new CreateIndexRequest(INDEX4), RequestOptions.DEFAULT);
+    val indicesBeforeRelease = repository.getIndices();
+    assertThat(indicesBeforeRelease).containsExactlyInAnyOrder(INDEX1, INDEX2, INDEX3, "badindex", INDEX4);
+
+    // release foobar3
+    val request2 = new AliasRequest("file_centric", "RE_foobar3", Lists.list("SD_preasa7s"));
+    service.release(request2);
+
+    // verify aliases assigned to indices
+    val state2 = repository.getAliasState();
+    assertThat(state2.get(INDEX2)).isNull(); // sd_preasa7s foobar3 release deleted old foobar1 since keeping `1` latestNonReleasedIndex
+    assertThat(state2.get(INDEX3).isEmpty()).isTrue(); // sd_preasa7s unreleased index foobar2 is kept
+    assertThat(state2.get(INDEX4).get(0).alias()).isEqualTo("file_centric"); // new released index
+
+    // assert current indices
+    val indicesAfterRelease = repository.getIndices();
+    assertThat(indicesAfterRelease).containsExactlyInAnyOrder(INDEX1, INDEX3, "badindex", INDEX4);
+  }
+
+  @Test
+  @SneakyThrows
+  public void testIndicesNotDeletedIfNotConfigured() {
+    final String INDEXA = "participant_centric_sd_preasa7s_re_foobar1";
+    final String INDEXB = "participant_centric_sd_preasa7s_re_foobar2";
+    final String INDEXC = "participant_centric_sd_preasa7s_re_foobar3";
+
+    client.indices().create(new CreateIndexRequest(INDEXA), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEXB), RequestOptions.DEFAULT);
+    client.indices().create(new CreateIndexRequest(INDEXC), RequestOptions.DEFAULT);
+
+    val indicesBeforeRelease = repository.getIndices();
+    assertThat(indicesBeforeRelease).containsExactlyInAnyOrder(INDEX1, INDEX2, INDEX3, "badindex", INDEXA, INDEXB, INDEXC);
+
+    // release foobar3 in participant_centric, shouldn't delete any participant_centric index since it was not configured
+    val request = new AliasRequest("participant_centric", "RE_foobar3", Lists.list( "sd_preasa7s"));
+    service.release(request);
+
+    // assert current indices
+    val indicesAfterRelease = repository.getIndices();
+    assertThat(indicesAfterRelease).containsExactlyInAnyOrder(indicesBeforeRelease);
+  }
 }

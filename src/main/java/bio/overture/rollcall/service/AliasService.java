@@ -35,7 +35,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.stream.Collectors.toList;
 
@@ -100,9 +102,13 @@ public class AliasService {
     }
 
     val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
+    val indicesToDelete = getIndicesToDelete(candidates, shards, indicesToRelease);
 
-    repository.makeIndicesReadOnly(indicesToRelease);
-    return repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
+    val successfullyMadeReadOnly = repository.makeIndicesReadOnly(indicesToRelease);
+    val successfullyUpdatedAliases = repository.updateIndicesAliases(alias, indicesToRelease, indicesToRemoveFromAlias);
+    val successfullyDeletedOldIndices = repository.deleteIndices(indicesToDelete.toArray(String[]::new));
+
+    return successfullyMadeReadOnly && successfullyUpdatedAliases && successfullyDeletedOldIndices;
   }
 
   public List<String> getIndicesToRemoveFromAlias(@NonNull AliasRequest aliasRequest) {
@@ -113,25 +119,18 @@ public class AliasService {
 
     // TODO: UNIT TEST
     val existing = getIndicesWithAlias(alias);
-    val indices = candidates.getIndices().stream()
+    return candidates.getIndices().stream()
       .filter(i -> shards.stream().
         anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
       .filter(i -> existing.contains(i.getIndexName()))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
-
-    return indices;
   }
 
   public boolean remove(@NonNull AliasRequest aliasRequest) {
     val alias = aliasRequest.getAlias();
     val indices = getIndicesToRemoveFromAlias(aliasRequest);
     return repository.removeAlias(alias, indices);
-  }
-
-  public boolean removeAliasFromAllIndices(@NonNull String alias) {
-    List<String> existing = getIndicesWithAlias(alias);
-    return repository.removeAlias(alias, existing);
   }
 
   private static List<Shard> getShardsFromRequest(AliasRequest aliasRequest) {
@@ -172,6 +171,32 @@ public class AliasService {
       .filter(i -> i.getReleasePrefix().equals(release[0]) && i.getRelease().equals(release[1]))
       .map(ResolvedIndex::getIndexName)
       .collect(toList());
+  }
+
+  private List<String> getIndicesToDelete(AliasCandidates candidates, List<Shard> shards, List<String> releaseIndicesToIgnore) {
+    val numOfRecentIndicesToKeep = candidates.getAlias().getReleaseRotation();
+    if ( numOfRecentIndicesToKeep < 0) {
+      return Collections.emptyList();
+    }
+
+    val relevantIndices = candidates.getIndices().stream()
+                          .filter(i -> shards.stream().anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
+                          .map(ResolvedIndex::getIndexName)
+                          .filter(i -> !releaseIndicesToIgnore.contains(i))
+                          .collect(toList());
+
+    val sortedByDate = getIndicesSortedByCreationDate(relevantIndices);
+    val deleteUpToIndex = Math.max(sortedByDate.size() - numOfRecentIndicesToKeep, 0);
+
+    return sortedByDate.subList(0, deleteUpToIndex);
+  }
+
+  private List<String> getIndicesSortedByCreationDate(List<String> indexNames) {
+    val indexMappedToCreationDate = repository.getIndicesMappedToCreationDate(indexNames.toArray(String[]::new));
+    return indexMappedToCreationDate.entrySet().stream()
+                   .sorted(Map.Entry.comparingByValue()) // sort by map value, which is date
+                   .map(Map.Entry::getKey)
+                   .collect(toList());
   }
 
   @Data

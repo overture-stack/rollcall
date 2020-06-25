@@ -23,6 +23,7 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest;
 import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
@@ -37,8 +38,8 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions.*;
@@ -131,5 +132,30 @@ public class IndexRepository {
     req.setResizeType(ResizeType.CLONE);
     req.getTargetIndexRequest().settings(settings, XContentType.JSON);
     return client.indices().clone(req, RequestOptions.DEFAULT).isAcknowledged();
+  }
+
+  @SneakyThrows
+  public boolean deleteIndices(@NonNull String... indices) {
+    if (indices.length == 0) {
+      return true;
+    }
+    val request = new DeleteIndexRequest();
+    request.indices(indices);
+    return client.indices().delete(request, RequestOptions.DEFAULT).isAcknowledged();
+  }
+
+  @SneakyThrows
+  public Map<String, Date> getIndicesMappedToCreationDate(String... indices) {
+    val response = client.indices().get(new GetIndexRequest(indices).indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT);
+
+    val indicesSettings = response.getSettings();
+
+    return indicesSettings.entrySet().stream()
+            .collect(
+                    Collectors.toMap(
+                            Map.Entry::getKey, // key is index name
+                            e -> new Date(e.getValue().getAsLong("index.creation_date", null))
+                    )
+            );
   }
 }
