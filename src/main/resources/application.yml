@@ -19,7 +19,7 @@ rollcall:
       alias: file_centric
       entity: file
       type: centric
-      numOfRecentIndicesToKeepBesidesReleased: 3
+      recentShardsToKeepOnRelease: 3
     -
       alias: participant_centric
       entity: participant

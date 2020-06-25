@@ -66,7 +66,7 @@ public class AliasServiceTest {
   @Before
   @SneakyThrows
   public void setUp() {
-    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getIpAddress()), 10200)));
+    client = new RestHighLevelClient( RestClient.builder(new HttpHost(InetAddress.getByName(esContainer.getContainerIpAddress()), 10200)));
     repository = new IndexRepository(client);
 
     val config = new RollcallConfig(Lists.list(new RollcallConfig.ConfiguredAlias("file_centric", "file", "centric", 1)));

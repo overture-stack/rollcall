@@ -33,10 +33,13 @@ import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toUnmodifiableList;
 
 @Service
 public class AliasService {
@@ -99,7 +102,6 @@ public class AliasService {
     }
 
     val indicesToRemoveFromAlias = getIndicesToRemoveFromAlias(aliasRequest);
-
     val indicesToDelete = getIndicesToDelete(candidates, shards, indicesToRelease);
 
     val successfullyMadeReadOnly = repository.makeIndicesReadOnly(indicesToRelease);
@@ -172,8 +174,8 @@ public class AliasService {
   }
 
   private List<String> getIndicesToDelete(AliasCandidates candidates, List<Shard> shards, List<String> releaseIndicesToIgnore) {
-    val numOfRecentIndicesToKeep = candidates.getAlias().getNumOfRecentIndicesToKeepBesidesReleased();
-    if (numOfRecentIndicesToKeep < 0) {
+    val numOfRecentIndicesToKeep = candidates.getAlias().getRecentShardsToKeepOnRelease();
+    if ( numOfRecentIndicesToKeep < 0) {
       return Collections.emptyList();
     }
 
@@ -181,7 +183,7 @@ public class AliasService {
                           .filter(i -> shards.stream().anyMatch(shard -> shard.matches(i.getShardPrefix(), i.getShard())))
                           .map(ResolvedIndex::getIndexName)
                           .filter(i -> !releaseIndicesToIgnore.contains(i))
-                          .collect(toUnmodifiableList());
+                          .collect(toList());
 
     val sortedByDate = getIndicesSortedByCreationDate(relevantIndices);
     val deleteUpToIndex = Math.max(sortedByDate.size() - numOfRecentIndicesToKeep, 0);
@@ -190,7 +192,7 @@ public class AliasService {
   }
 
   private List<String> getIndicesSortedByCreationDate(List<String> indexNames) {
-    val indexMappedToCreationDate = repository.getIndexMappedToCreationDate(indexNames.toArray(String[]::new));
+    val indexMappedToCreationDate = repository.getIndicesMappedToCreationDate(indexNames.toArray(String[]::new));
     return indexMappedToCreationDate.entrySet().stream()
                    .sorted(Map.Entry.comparingByValue()) // sort by map value, which is date
                    .map(Map.Entry::getKey)

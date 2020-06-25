@@ -19,6 +19,7 @@
 package bio.overture.rollcall.config;
 
 import lombok.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -48,18 +49,12 @@ public class RollcallConfig {
   @Data
   @NoArgsConstructor
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class ConfiguredAlias {
-    private String alias;
-    private String entity;
-    private String type;
-    private int numOfRecentIndicesToKeepBesidesReleased;
-
-    public ConfiguredAlias(String alias, String entity, String type) {
-      this.alias = alias;
-      this.entity = entity;
-      this.type = type;
-      this.numOfRecentIndicesToKeepBesidesReleased = -1;
-    }
+    @NonNull private String alias;
+    @NonNull private String entity;
+    @NonNull private String type;
+    private int recentShardsToKeepOnRelease = -1;
   }
 
 }
