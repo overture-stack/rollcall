@@ -56,7 +56,7 @@ public class RollcallConfig {
     @NonNull private String alias;
     @NonNull private String entity;
     @NonNull private String type;
-    private int recentShardsToKeepOnRelease = -1;
+    private int releaseRotation = -1;
   }
 
 }

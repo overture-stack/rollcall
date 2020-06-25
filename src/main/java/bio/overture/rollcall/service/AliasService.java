@@ -174,7 +174,7 @@ public class AliasService {
   }
 
   private List<String> getIndicesToDelete(AliasCandidates candidates, List<Shard> shards, List<String> releaseIndicesToIgnore) {
-    val numOfRecentIndicesToKeep = candidates.getAlias().getRecentShardsToKeepOnRelease();
+    val numOfRecentIndicesToKeep = candidates.getAlias().getReleaseRotation();
     if ( numOfRecentIndicesToKeep < 0) {
       return Collections.emptyList();
     }
