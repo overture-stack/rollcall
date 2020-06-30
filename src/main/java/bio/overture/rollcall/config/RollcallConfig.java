@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -50,10 +51,12 @@ public class RollcallConfig {
   @Data
   @NoArgsConstructor
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class ConfiguredAlias {
-    private String alias;
-    private String entity;
-    private String type;
+    @NonNull private String alias;
+    @NonNull private String entity;
+    @NonNull private String type;
+    private int releaseRotation = -1;
   }
 
 }
