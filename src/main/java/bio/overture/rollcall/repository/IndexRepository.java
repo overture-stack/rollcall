@@ -118,12 +118,7 @@ public class IndexRepository {
   public boolean createIndex(@NonNull String indexName, @NonNull String settings) {
     val req = new CreateIndexRequest(indexName);
     req.settings(settings, XContentType.JSON);
-    return client.indices().create(new CreateIndexRequest(indexName), RequestOptions.DEFAULT).isAcknowledged();
-  }
-
-  @SneakyThrows
-  public boolean cloneIndex(@NonNull String indexToClone, @NonNull String newIndexName) {
-    return cloneIndex(indexToClone, newIndexName, "{}");
+    return client.indices().create(req, RequestOptions.DEFAULT).isAcknowledged();
   }
 
   @SneakyThrows

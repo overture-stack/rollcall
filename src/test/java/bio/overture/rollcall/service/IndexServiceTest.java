@@ -29,6 +29,7 @@ import lombok.val;
 import org.apache.http.HttpHost;
 import org.assertj.core.util.Lists;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
@@ -85,6 +86,20 @@ public class IndexServiceTest {
     @SneakyThrows
     public void tearDown() {
         client.indices().delete(new DeleteIndexRequest("*"), RequestOptions.DEFAULT);
+    }
+
+    @Test
+    @SneakyThrows
+    public void testIndexSettingOnCreateIndex() {
+        val indexSetting = "{\"index.number_of_shards\":3,\"index.number_of_replicas\":2}";
+        val req = new CreateResolvableIndexRequest(ENTITY_VALUE, TYPE_VALUE, "sd", "kkde23", "re", false, indexSetting);
+        val newResolvedIndex = service.createResolvableIndex((req));
+        val getSettingsReq = new GetSettingsRequest().indices(newResolvedIndex.getIndexName());
+        val resp = client.indices().getSettings(getSettingsReq, RequestOptions.DEFAULT);
+        val replicasNum = Integer.valueOf(resp.getSetting(newResolvedIndex.getIndexName(), "index.number_of_replicas"));
+        val shardNum = Integer.valueOf(resp.getSetting(newResolvedIndex.getIndexName(), "index.number_of_shards"));
+        assertThat(shardNum).isEqualTo(3);
+        assertThat(replicasNum).isEqualTo(2);
     }
 
     @Test
