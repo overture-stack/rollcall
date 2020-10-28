@@ -93,7 +93,7 @@ public class IndexServiceTest {
     public void testIndexSettingOnCreateIndex() {
         val indexSetting = "{\"index.number_of_shards\":3,\"index.number_of_replicas\":2}";
         val req = new CreateResolvableIndexRequest(ENTITY_VALUE, TYPE_VALUE, "sd", "kkde23", "re", false, indexSetting);
-        val newResolvedIndex = service.createResolvableIndex((req));
+        val newResolvedIndex = service.createResolvableIndex(req);
         val getSettingsReq = new GetSettingsRequest().indices(newResolvedIndex.getIndexName());
         val resp = client.indices().getSettings(getSettingsReq, RequestOptions.DEFAULT);
         val replicasNum = Integer.valueOf(resp.getSetting(newResolvedIndex.getIndexName(), "index.number_of_replicas"));
