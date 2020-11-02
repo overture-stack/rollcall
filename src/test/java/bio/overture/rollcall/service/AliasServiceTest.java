@@ -128,6 +128,21 @@ public class AliasServiceTest {
 
   @Test
   @SneakyThrows
+  public void testReleaseSingleIndexWithRotationOn() {
+    val NEW_INDEX = "file_centric_sd_asdfca_re_1";
+    client.indices().create(new CreateIndexRequest(NEW_INDEX), RequestOptions.DEFAULT);
+
+    // release foobar2
+    val request1 = new AliasRequest("file_centric", "re_1", Lists.list( "sd_asdfca"));
+    service.release(request1);
+
+    // verify aliases assigned to indices
+    val state1 = repository.getAliasState();
+    assertThat(state1.get(NEW_INDEX).get(0).alias()).isEqualTo("file_centric");
+  }
+
+  @Test
+  @SneakyThrows
   public void testReleaseAndDeleteOldIndices() {
     // release foobar2
     val request1 = new AliasRequest("file_centric", "RE_foobar2", Lists.list( "sd_preasa7s"));
