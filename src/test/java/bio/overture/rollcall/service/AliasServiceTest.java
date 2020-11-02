@@ -128,7 +128,7 @@ public class AliasServiceTest {
 
   @Test
   @SneakyThrows
-  public void testReleaseSingleIndexWithRotationOn() {
+  public void testReleaseNewIndexWithRotationOn() {
     val NEW_INDEX = "file_centric_sd_asdfca_re_1";
     client.indices().create(new CreateIndexRequest(NEW_INDEX), RequestOptions.DEFAULT);
 
