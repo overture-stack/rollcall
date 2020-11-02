@@ -132,7 +132,7 @@ public class AliasServiceTest {
     val NEW_INDEX = "file_centric_sd_asdfca_re_1";
     client.indices().create(new CreateIndexRequest(NEW_INDEX), RequestOptions.DEFAULT);
 
-    // release foobar2
+    // release re_1 for index shard sd_asdfca
     val request1 = new AliasRequest("file_centric", "re_1", Lists.list( "sd_asdfca"));
     service.release(request1);
 
