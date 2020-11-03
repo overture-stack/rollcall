@@ -140,7 +140,11 @@ public class IndexRepository {
   }
 
   @SneakyThrows
-  public Map<String, Date> getIndicesMappedToCreationDate(String... indices) {
+  public Map<String, Date> getIndicesMappedToCreationDate(@NonNull String... indices) {
+    if (indices.length == 0) {
+      return Map.of();
+    }
+
     val response = client.indices().get(new GetIndexRequest(indices).indicesOptions(IndicesOptions.lenientExpand()), RequestOptions.DEFAULT);
 
     val indicesSettings = response.getSettings();
