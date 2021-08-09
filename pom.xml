@@ -43,7 +43,7 @@
         <antlr4.version>4.7</antlr4.version>
         <antlr4-maven.version>4.7</antlr4-maven.version>
         <springfox.version>2.9.2</springfox.version>
-        <elasticsearch.version>7.5.2</elasticsearch.version>
+        <elasticsearch.version>7.13.3</elasticsearch.version>
     </properties>
 
     <dependencies>
