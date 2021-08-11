@@ -2,6 +2,9 @@ import groovy.json.JsonOutput
 
 def version = "UNKNOWN"
 def commit = "UNKNOWN"
+def dockerHubRepo = "overture/rollcall"
+def gitHubRegistry = "ghcr.io"
+def gitHubRepo = "overture-stack/rollcall"
 
 pipeline {
     agent {
@@ -65,6 +68,32 @@ spec:
                 }
             }
         }
+// TEST BLOCK - CLEAN UP BEFORE PR
+        stage('Validate jenkinsfile changes') {
+            when {
+                branch "jenkins-dind-fix"
+            }
+            steps {
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId:'OvertureDockerHub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh 'docker login -u $USERNAME -p $PASSWORD'
+                    }
+                    sh "docker build --network=host -f Dockerfile . -t ${dockerHubRepo}:edge -t ${dockerHubRepo}:${commit}"
+//                    sh "docker push ${dockerHubRepo}:edge"
+                    sh "docker push ${dockerHubRepo}:${commit}"
+                }
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId:'OvertureBioGithub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh "docker login ${gitHubRegistry} -u $USERNAME -p $PASSWORD"
+                    }
+                    sh "docker build --network=host -f Dockerfile . -t ${gitHubRegistry}/${gitHubRepo}:edge -t ${gitHubRegistry}/${gitHubRepo}:${commit}"
+//                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:edge"
+                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:${commit}"
+                }
+
+            }
+        }
+// END OF TEST BLOCK
         stage('Build & Publish Develop') {
             when {
                 branch "develop"
@@ -74,10 +103,19 @@ spec:
                     withCredentials([usernamePassword(credentialsId:'OvertureDockerHub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                         sh 'docker login -u $USERNAME -p $PASSWORD'
                     }
-                    sh "docker build --network=host -f Dockerfile . -t overture/rollcall:edge -t overture/rollcall:${commit}"
-                    sh "docker push overture/rollcall:edge"
-                    sh "docker push overture/rollcall:${commit}"
+                    sh "docker build --network=host -f Dockerfile . -t ${dockerHubRepo}:edge -t ${dockerHubRepo}:${commit}"
+                    sh "docker push ${dockerHubRepo}:edge"
+                    sh "docker push ${dockerHubRepo}:${commit}"
                 }
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId:'OvertureBioGithub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh "docker login ${gitHubRegistry} -u $USERNAME -p $PASSWORD"
+                    }
+                    sh "docker build --network=host -f Dockerfile . -t ${gitHubRegistry}/${gitHubRepo}:edge -t ${gitHubRegistry}/${gitHubRepo}:${commit}"
+                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:edge"
+                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:${commit}"
+                }
+
             }
         }
         stage('Release & tag') {
@@ -88,15 +126,24 @@ spec:
                 container('docker') {
                     withCredentials([usernamePassword(credentialsId: 'OvertureBioGithub', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh "git tag ${version}"
-                        sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/overture-stack/rollcall --tags"
+                        sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${gitHubRepo} --tags"
                     }
                     withCredentials([usernamePassword(credentialsId:'OvertureDockerHub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                         sh 'docker login -u $USERNAME -p $PASSWORD'
                     }
-                    sh "docker build --network=host -f Dockerfile . -t overture/rollcall:latest -t overture/rollcall:${version}"
-                    sh "docker push overture/rollcall:${version}"
-                    sh "docker push overture/rollcall:latest"
+                    sh "docker build --network=host -f Dockerfile . -t ${dockerHubRepo}:latest -t ${dockerHubRepo}:${version}"
+                    sh "docker push ${dockerHubRepo}:${version}"
+                    sh "docker push ${dockerHubRepo}:latest"
                 }
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId:'OvertureBioGithub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh "docker login ${gitHubRegistry} -u $USERNAME -p $PASSWORD"
+                    }
+                    sh "docker build --network=host -f Dockerfile . -t ${gitHubRegistry}/${gitHubRepo}:latest -t ${gitHubRegistry}/${gitHubRepo}:${version}"
+                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:${version}"
+                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:latest"
+                }
+
           }
         }
     }
