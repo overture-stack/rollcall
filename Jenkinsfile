@@ -68,32 +68,6 @@ spec:
                 }
             }
         }
-// TEST BLOCK - CLEAN UP BEFORE PR
-        stage('Validate jenkinsfile changes') {
-            when {
-                branch "jenkins-dind-fix"
-            }
-            steps {
-                container('docker') {
-                    withCredentials([usernamePassword(credentialsId:'OvertureDockerHub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh 'docker login -u $USERNAME -p $PASSWORD'
-                    }
-                    sh "docker build --network=host -f Dockerfile . -t ${dockerHubRepo}:edge -t ${dockerHubRepo}:${commit}"
-//                    sh "docker push ${dockerHubRepo}:edge"
-                    sh "docker push ${dockerHubRepo}:${commit}"
-                }
-                container('docker') {
-                    withCredentials([usernamePassword(credentialsId:'OvertureBioGithub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh "docker login ${gitHubRegistry} -u $USERNAME -p $PASSWORD"
-                    }
-                    sh "docker build --network=host -f Dockerfile . -t ${gitHubRegistry}/${gitHubRepo}:edge -t ${gitHubRegistry}/${gitHubRepo}:${commit}"
-//                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:edge"
-                    sh "docker push ${gitHubRegistry}/${gitHubRepo}:${commit}"
-                }
-
-            }
-        }
-// END OF TEST BLOCK
         stage('Build & Publish Develop') {
             when {
                 branch "develop"
