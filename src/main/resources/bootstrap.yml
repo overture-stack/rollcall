@@ -1,1 +1,4 @@
 spring.cloud.vault.enabled: false
+
+# custom config to set vault path for all required secrets
+rollcall.vault.secretsPath: kv/dev/rollcall
