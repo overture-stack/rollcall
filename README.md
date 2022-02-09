@@ -53,4 +53,28 @@ It can be found here: [IndexName.g4](src/main/antlr4/bio/overture/rollcall/antlr
 Using one of the indices from the motivating example, `demographic_entity_cl_clinicA_re_0` this is what a parse tree looks like:
 ![Parse Tree](img/parse.png)
 
-This opinionated way of naming indices allows us to define semantics about the terms in a name which Rollcall uses to manage data releases. It is thanks to this that the index names and aliases are themselves the source of truth and state of the system rather than an external 3rd party acting as a datastore for state and truth. 
+This opinionated way of naming indices allows us to define semantics about the terms in a name which Rollcall uses to manage data releases. It is thanks to this that the index names and aliases are themselves the source of truth and state of the system rather than an external 3rd party acting as a datastore for state and truth.
+
+## Using with Vault
+
+This application can be used with vault to provide secrets for dependency services.
+
+Most configuration of vault follows the spring-cloud-vault [documentation](https://docs.spring.io/spring-cloud-vault/docs/2.2.7.RELEASE/reference/html/#vault.config.backends.configurer). 
+However, the generation of vault secrets path is overridden using the `rollcall.vault.secrtsPath` config. This is because the spring default looks for secrets in location that include application-name and active-profiles which requires enabling access to those paths otherwise rollcall will throw errors.
+
+Values are configured in the spring bootstrap context. Example bootsrap.yml usign vault token auth is shown bellow.
+```bootstrap.yml
+    rollcall.vault.secretsPath: kv/dev/rollcall
+    
+    spring.cloud.vault:
+      enabled: true
+      scheme: http
+      token: ******TOKEN******
+      enabled: true
+      host: localhost
+      port: 8200
+```
+
+Setting things up on the vault end:
+- Rollcall has to have at least read access to the path that will be provided in `rollcall.vault.secrtsPath`. 
+- keys in vault key-value pair have to match the application.yml variable. (e.g. for `elasticsearch.user` in application.yml key in vault has to be `elasticsearch.user`)

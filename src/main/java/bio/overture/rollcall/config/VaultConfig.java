@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Configuration;
  * bootstrap context via the META-INF/spring.factories. The config values come from the
  * bootstrap.yml or env configs.
  *
+ * More info: https://docs.spring.io/spring-cloud-vault/docs/2.2.7.RELEASE/reference/html/#vault.config.backends.configurer
+ *
  */
 @Configuration
 public class VaultConfig implements VaultConfigurer {
